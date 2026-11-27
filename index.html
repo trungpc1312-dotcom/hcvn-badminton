@@ -662,8 +662,6 @@ var SHEETS={
   }
   var b='<div class="card" style="display:flex;flex-direction:column;gap:12px"><div class="field"><label for="f-name">Tên</label><input id="f-name" value="'+esc(x?x.name:'')+'" placeholder="vd: Anh Tuấn"></div>'+
    '<div class="field"><span class="flabel">Loại</span><div class="seg" id="f-type"><button data-act="seg" data-v="fixed" aria-pressed="'+(!x||x.type==='fixed')+'">Cố định</button><button data-act="seg" data-v="walkin" aria-pressed="'+(x&&x.type!=='fixed')+'">Vãng lai</button></div><span class="hint">Người cố định đóng quỹ theo tháng. Vãng lai đóng theo buổi.</span></div>'+
-   '<div class="field"><label for="f-phone">Số điện thoại (không bắt buộc)</label><input id="f-phone" inputmode="tel" value="'+esc(x?x.phone||'':'')+'"><span class="hint">Chỉ trưởng nhóm thấy trên app.</span></div>'+
-   '<div class="field"><label for="f-mnote">Ghi chú</label><input id="f-mnote" value="'+esc(x?x.note||'':'')+'"></div>'+
    (x?'<label class="check"><input type="checkbox" id="f-active"'+(x.active!==false?' checked':'')+'><span class="grow">Còn chơi trong team</span></label>':'')+'</div>'+
    '<button class="btn block" data-act="saveMember" data-v="'+(id||'')+'">Lưu</button>'+
    (x?'<div id="del-zone"><button class="btn danger block" data-act="askDel" data-v="member:'+id+'">Xoá người này</button></div>':'');
@@ -907,7 +905,7 @@ var ACT={
   var typeBtn=document.querySelector('#f-type [aria-pressed=true]'),type=typeBtn?typeBtn.getAttribute('data-v'):'fixed';
   var x=id?mem(id):null,isNew=!x;
   if(!x){x={id:uid(),active:true};S.members.push(x)}
-  var oldType=x.type;x.name=n;x.type=type;x.phone=val('f-phone').trim();x.note=val('f-mnote').trim();
+  var oldType=x.type;x.name=n;x.type=type;
   var a=document.getElementById('f-active');if(a)x.active=a.checked;
   if(isNew||oldType!==type){
    var m=curMonth(),fx=fixedFor(m).slice(),i=fx.indexOf(x.id);
