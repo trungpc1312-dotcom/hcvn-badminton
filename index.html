@@ -575,8 +575,8 @@ function tabQuy(){
     h+='<section class="card"><div class="sec-h"><h2>Chưa đóng đến nay</h2><span class="chip warn num">'+money(allOwe)+'</span></div><table class="debt" style="margin-top:6px">';
     debtors.forEach(function(x){
       var first=x.months[0];
-      h+='<tr><td><div style="font-weight:700">'+esc(x.name)+'</div><div class="small muted">'+x.months.map(function(o){return 'T'+(+o.m.split('-')[1])+': '+moneyShort(o.owe)}).join(' · ')+'</div></td><td style="text-align:right"><span class="chip warn num">'+money(x.owe)+'</span>'+
-        (V.canEdit&&first?'<div style="margin-top:6px"><button class="btn sm ghost" data-act="payQuick" data-v="'+x.id+'" data-a="'+first.owe+'" data-m="'+first.m+'">Ghi đã đóng T'+(+first.m.split('-')[1])+'</button></div>':'')+'</td></tr>';
+      h+='<tr><td><div style="font-weight:700">'+esc(x.name)+'</div><div class="small muted">'+x.months.map(function(o){return 'T'+(+o.m.split('-')[1])+': '+moneyShort(o.owe)}).join(' · ')+'</div></td><td style="text-align:right;white-space:nowrap"><div style="display:inline-flex;align-items:center;gap:12px"><span class="chip warn num">'+money(x.owe)+'</span>'+
+        (V.canEdit&&first?'<input type="checkbox" class="ptick" aria-label="'+esc(x.name)+' đã đóng T'+(+first.m.split('-')[1])+'" data-id="'+x.id+'" data-m="'+first.m+'">':'')+'</div></td></tr>';
     });
     h+='</table></section>';
   }
