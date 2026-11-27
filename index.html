@@ -100,7 +100,7 @@ h3{font-size:13px;margin:0;font-weight:700;text-transform:uppercase;letter-spaci
 .btn.cork{background:var(--court-soft);color:var(--court)}
 .btn.danger{background:var(--bad-soft);color:var(--bad)}
 .btn.block{width:100%}
-.btn:disabled{opacity:.45;cursor:default}
+.btn:disabled,.mbtn:disabled{opacity:.35;cursor:default}
 .btnrow .btn{text-align:center}
 .hero .btnrow .btn{flex:1 1 0;min-width:0;padding-inline:8px}
 .btn.sm{min-height:36px;padding:6px 12px;font-size:14px;white-space:nowrap;flex:none}
@@ -242,8 +242,8 @@ var DAYS=['Chủ nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ 
 var DSHORT=['CN','T2','T3','T4','T5','T6','T7'];
 var DEFAULTS={
   settings:{teamName:'HCVN badminton chicken',venueName:'',mapUrl:'https://share.google/ES7iBbWaIe6ruIser',day:4,start:'18:00',end:'20:00',courts:['1'],monthlyFee:0,walkinFee:0,
-    categories:['Tiền sân','Cầu','Nước','Liên hoan','Khác'],bankName:'',bankAccount:'',bankOwner:'',payDay:10,zaloUrl:''},
-  members:[],sessions:{},months:{},payments:[],expenses:[]
+    categories:['Tiền sân','Cầu','Nước','Liên hoan','Khác'],bankName:'',bankAccount:'',bankOwner:'',payDay:10,zaloUrl:'',fundStart:'2026-12'},
+  members:[],sessions:{},months:{},payments:[],expenses:[],charges:[]
 };
 var S,SEED=document.getElementById('app-data').textContent||'{}',CACHE=null;
 try{CACHE=localStorage.getItem('cl-cache')}catch(e){}
@@ -272,7 +272,7 @@ function mLabel(m){var p=m.split('-');return 'Tháng '+(+p[1])+'/'+p[0]}
 function dLabel(s){var d=pd(s);return DAYS[d.getDay()]+', '+pad(d.getDate())+'/'+pad(d.getMonth()+1)}
 function money(n){n=Math.round(n||0);return n.toLocaleString('vi-VN')+'đ'}
 function moneyShort(n){var a=Math.abs(n);if(a>=1e6)return (n/1e6).toFixed(a>=1e7?0:1).replace('.',',')+'tr';if(a>=1e3)return Math.round(n/1e3)+'k';return String(n)}
-var MONEY_IDS=['f-amt','f-fee','f-mfee','s-mfee','s-wfee'];
+var MONEY_IDS=['f-amt','f-fee','f-mfee','s-mfee','s-wfee','f-camt'];
 function fmtNum(v){var d=String(v==null?'':v).replace(/\D/g,'').replace(/^0+(?=\d)/,'');return d?d.replace(/\B(?=(\d{3})+(?!\d))/g,'.'):''}
 function fmtMoneyAll(){MONEY_IDS.forEach(function(id){var el=document.getElementById(id);if(el)el.value=fmtNum(el.value)})}
 function toInt(v){return parseInt(String(v||'').replace(/\D/g,''),10)||0}
@@ -324,6 +324,8 @@ function dues(m){
     if(s.status==='cancelled'||!s.checked)return;
     s.attended.forEach(function(id){var r=row(id);r.sessions++;if(fixed.indexOf(id)<0)r.due+=sessFee(s)});
   });
+  var ch={};(S.charges||[]).forEach(function(c){if(c.month===m&&c.memberId)ch[c.memberId]=(ch[c.memberId]||0)+c.amount});
+  Object.keys(ch).forEach(function(id){var r=row(id);r.due=ch[id];r.charged=true});
   S.payments.forEach(function(p){if(p.month===m&&p.memberId){row(p.memberId).paid+=p.amount}});
   return Object.keys(rows).map(function(k){var r=rows[k];r.owe=r.due-r.paid;r.name=mname(k);return r}).sort(function(a,b){return (b.fixed-a.fixed)||(b.owe-a.owe)||a.name.localeCompare(b.name,'vi')});
 }
@@ -332,13 +334,15 @@ function dataStart(){
   S.payments.forEach(function(p){c.push(p.month);c.push(mk(p.date))});S.expenses.forEach(function(e){c.push(mk(e.date))});
   c=c.filter(Boolean).sort();return c[0]||mk(today());
 }
+function fStart(){return S.settings.fundStart||'2026-12'}
 function dataEnd(){
-  var c=[mk(today())];S.payments.forEach(function(p){c.push(p.month)});c.sort();return c[c.length-1];
+  var c=[mk(today())];S.payments.forEach(function(p){c.push(p.month)});(S.charges||[]).forEach(function(x){c.push(x.month)});c.sort();return c[c.length-1];
 }
 function monthsRange(a,b){var r=[],m=a;while(m<=b&&r.length<240){r.push(m);m=mAdd(m,1)}return r}
 function totalDebts(){
   var t={};
-  monthsRange(dataStart(),dataEnd()).forEach(function(m){dues(m).forEach(function(r){
+  var a=dataStart();if(a<fStart())a=fStart();
+  monthsRange(a,dataEnd()).forEach(function(m){dues(m).forEach(function(r){
     if(!t[r.id])t[r.id]={id:r.id,name:r.name,owe:0,months:[]};
     t[r.id].owe+=r.owe;if(r.owe>0)t[r.id].months.push({m:m,owe:r.owe});
   })});
@@ -404,9 +408,9 @@ function render(){
   if(V.sheet)openSheet(V.sheet[0],V.sheet[1],true);
   var sel=document.querySelector('.tl [aria-pressed="true"]');if(sel){var c=sel.parentNode;c.scrollLeft=sel.offsetLeft-(c.clientWidth-sel.offsetWidth)/2}
 }
-function monthNav(){
+function monthNav(minM){
   var m=curMonth();
-  return '<div class="monthnav"><button class="mbtn" data-act="month" data-v="-1" aria-label="Tháng trước">‹</button><b>'+mLabel(m)+'</b><button class="mbtn" data-act="month" data-v="1" aria-label="Tháng sau">›</button></div>';
+  return '<div class="monthnav"><button class="mbtn" data-act="month" data-v="-1" aria-label="Tháng trước"'+(minM&&m<=minM?' disabled':'')+'>‹</button><b>'+mLabel(m)+'</b><button class="mbtn" data-act="month" data-v="1" aria-label="Tháng sau">›</button></div>';
 }
 function courtsTxt(c){return c&&c.length?'Sân số '+c.join(', '):'Chưa chọn sân'}
 function zaloBtn(cls){
@@ -424,14 +428,14 @@ function qrBlock(){
   return '<div class="qr"><img src="'+st.qr+'" alt="Mã QR chuyển khoản" data-act="qrView">'+(V.dl?'<button class="btn sm" data-act="dlQr">Tải mã QR về máy</button>':'')+'<span class="hint small">'+(V.dl?'Chạm để phóng to, hoặc giữ để lưu ảnh.':'Chạm để phóng to, giữ để lưu ảnh rồi quét bằng app ngân hàng.')+'</span></div>';
 }
 function payStatus(m,nav){
-  var rows=dues(m).filter(function(r){return r.fixed||r.sessions>0||r.paid>0}).sort(function(a,b){return (b.fixed-a.fixed)||a.name.localeCompare(b.name,'vi')});
+  var rows=dues(m).filter(function(r){return r.fixed||r.sessions>0||r.paid>0||r.charged}).sort(function(a,b){return (b.fixed-a.fixed)||a.name.localeCompare(b.name,'vi')});
   var h='<section class="card"><div class="sec-h"><h2>'+(nav?'Đóng tiền':'Đóng tiền '+mLabel(m).toLowerCase())+'</h2></div>';
-  if(nav)h+='<div class="monthnav" style="margin-top:8px"><button class="mbtn" data-act="month" data-v="-1" aria-label="Tháng trước">‹</button><b style="font-size:15px">'+mLabel(m)+'</b><button class="mbtn" data-act="month" data-v="1" aria-label="Tháng sau">›</button></div>';
+  if(nav)h+='<div class="monthnav" style="margin-top:8px"><button class="mbtn" data-act="month" data-v="-1" aria-label="Tháng trước"'+(m<=fStart()?' disabled':'')+'>‹</button><b style="font-size:15px">'+mLabel(m)+'</b><button class="mbtn" data-act="month" data-v="1" aria-label="Tháng sau">›</button></div>';
   if(!rows.length)return h+'<div class="empty">Chưa có ai phải đóng tiền tháng này.<br><span class="small">Tiền được tính khi có người cố định hoặc khi điểm danh buổi chơi.</span></div></section>';
   h+='<div class="plist">';
   rows.forEach(function(r){
     var done=r.paid>0&&r.paid>=r.due,unset=r.due<=0&&r.paid<=0;
-    h+='<div class="prow"><div class="grow"><div class="t">'+esc(r.name)+'</div><div class="small muted">'+(r.fixed?'Cố định':'Vãng lai · '+r.sessions+' buổi')+(r.paid>0&&!done&&r.due>0?' · đã đóng '+moneyShort(r.paid):'')+'</div></div>'+
+    h+='<div class="prow"><div class="grow"'+(V.canEdit?' data-act="chargeFor" data-v="'+r.id+'" data-a="'+m+'" role="button" tabindex="0" style="cursor:pointer"':'')+'><div class="t">'+esc(r.name)+'</div><div class="small muted">'+(r.fixed?'Cố định':'Vãng lai · '+r.sessions+' buổi')+(r.paid>0&&!done&&r.due>0?' · đã đóng '+moneyShort(r.paid):'')+'</div></div>'+
       '<div class="amt num">'+(unset?'<span class="unset">Đóng tiền</span>':money(r.due>0?r.due:r.paid))+'</div>'+
       (V.canEdit?'<input type="checkbox" class="ptick" aria-label="'+esc(r.name)+' đã đóng" data-id="'+r.id+'" data-m="'+m+'"'+(done?' checked':'')+'>':'<span class="tickbox'+(done?' on':'')+'" role="img" aria-label="'+(done?'Đã đóng':'Chưa đóng')+'">'+(done?I.check.replace('<svg','<svg width="16" height="16"'):'')+'</span>')+'</div>';
     if(V.canEdit&&V.untick&&V.untick.id===r.id&&V.untick.m===m){
@@ -504,6 +508,7 @@ function mTien(){
   if(!debtors.length)h+='<div class="empty">Đủ hết rồi.</div>';
   debtors.forEach(function(x){h+='<button class="item" data-act="member" data-v="'+x.id+'"><div class="grow"><div class="t">'+esc(x.name)+'</div><div class="s">'+x.months.map(function(o){return 'T'+(+o.m.split('-')[1])+': '+moneyShort(o.owe)}).join(' · ')+'</div></div><span class="chip warn num">'+money(x.owe)+'</span></button>'});
   h+='</div></section>';
+  if(curMonth()<fStart())V.month=fStart();
   h+=payStatus(curMonth(),true);
   var tx=[];S.payments.forEach(function(p){if(p.month===cur)tx.push({k:'p',d:p.date,o:p})});S.expenses.forEach(function(e){if(mk(e.date)===cur)tx.push({k:'e',d:e.date,o:e})});
   tx.sort(function(a,b){return a.d<b.d?1:-1});
@@ -541,8 +546,9 @@ function tabTV(){
   return h;
 }
 function tabQuy(){
+  if(curMonth()<fStart())V.month=fStart();
   var m=curMonth(),inc=income(m),ex=expense(m),rows=dues(m),owe=rows.reduce(function(t,r){return t+Math.max(0,r.owe)},0);
-  var h=monthNav();
+  var h=monthNav(fStart());
   var fund=fundTotal(),td=totalDebts(),debtors=Object.keys(td).map(function(k){return td[k]}).filter(function(x){return x.owe>0}).sort(function(a,b){return b.owe-a.owe});
   var allOwe=debtors.reduce(function(t,x){return t+x.owe},0);
   h+='<div class="tiles"><div class="tile main'+(fund<0?' low':'')+'"><div class="k">Quỹ hiện có</div><div class="v num">'+money(fund)+'</div></div>'+
@@ -558,7 +564,7 @@ function tabQuy(){
     h+='</table></section>';
   }
   h+=payBox(null,0,m);
-  if(V.canEdit)h+='<div class="btnrow"><button class="btn" data-act="pay">'+I.plus+'Ghi khoản thu</button><button class="btn cork" data-act="exp">'+I.plus+'Ghi khoản chi</button></div>';
+  if(V.canEdit)h+='<div class="btnrow"><button class="btn" data-act="charge" data-v="'+m+'">'+I.plus+'Ghi khoản thu</button><button class="btn cork" data-act="exp">'+I.plus+'Ghi khoản chi</button></div>';
   h+=payStatus(m,false);
   var tx=[];
   S.payments.forEach(function(p){if(p.month===m)tx.push({k:'p',d:p.date,o:p})});
@@ -751,9 +757,27 @@ var SHEETS={
     '<div class="addrow"><input id="f-q" placeholder="Tìm tên…" aria-label="Tìm tên" data-act="filter"></div>'+
     '<div class="checks" id="checks">'+memberChecks('pm',ids)+'<label class="check"><input type="checkbox" name="pm" value="_other"><span class="grow">Thu khác (tài trợ, dư quỹ…)</span></label></div></div>'+
     '<div class="card" style="display:flex;flex-direction:column;gap:12px">'+tail+
-    '<button class="btn block" data-act="savePay">Lưu khoản thu (<span id="pm-count">'+ids.length+'</span> người)</button>';
+    '<button class="btn block" data-act="savePay"><span>Lưu khoản thu (<span id="pm-count">'+ids.length+'</span> người)</span></button>';
   }
-  return sheetWrap(p?'Sửa khoản thu':'Ghi khoản thu',b);
+  return sheetWrap(p?'Sửa khoản thu':'Ghi tiền đã thu',b);
+ },
+ charge:function(arg){
+  arg=arg||{};var m=arg.month||curMonth();if(m<fStart())m=fStart();
+  var x=arg.member?mem(arg.member):null,c=null;
+  if(x)(S.charges||[]).forEach(function(y){if(!c&&y.memberId===x.id&&y.month===m)c=y});
+  var isF=x?fixedFor(m).indexOf(x.id)>=0||(fixedFor(m).indexOf(x.id)<0&&x.type==='fixed'&&!c&&false):true;
+  if(x)isF=fixedFor(m).indexOf(x.id)>=0;
+  var dl='<datalist id="mlist">'+S.members.slice().sort(byName).map(function(y){return '<option value="'+esc(y.name)+'">'}).join('')+'</datalist>';
+  var b='<div class="card" style="display:flex;flex-direction:column;gap:12px">'+
+   '<div class="field"><label for="f-cname">Tên người đóng</label><input id="f-cname" list="mlist" autocomplete="off" value="'+esc(x?x.name:'')+'" placeholder="vd: Anh Tuấn">'+dl+'<span class="hint">Gõ vài chữ để chọn người có sẵn. Tên mới sẽ tự thêm vào tab Thành viên.</span></div>'+
+   '<div class="field"><span class="flabel">Loại</span><div class="seg" id="f-ctype"><button data-act="seg" data-v="fixed" aria-pressed="'+isF+'">Cố định</button><button data-act="seg" data-v="walkin" aria-pressed="'+(!isF)+'">Vãng lai</button></div></div>'+
+   '<div class="two"><div class="field"><label for="f-camt">Số tiền phải đóng (đ)</label><input id="f-camt" inputmode="numeric" value="'+(c?c.amount:'')+'" placeholder="vd: 414.000"></div>'+
+   '<div class="field"><label for="f-cm">Tháng</label><input id="f-cm" type="month" min="'+fStart()+'" value="'+m+'"></div></div></div>'+
+   '<p class="hint" style="margin:0">Lưu xong, người này hiện trong danh sách “Đóng tiền”. Khi họ chuyển khoản, chỉ cần tick.</p>'+
+   '<button class="btn block" data-act="saveCharge" data-v="'+(c?c.id:'')+'">Lưu</button>'+
+   (c?'<div id="del-zone"><button class="btn danger block" data-act="askDel" data-v="charge:'+c.id+'">Xoá khoản phải thu này</button></div>':
+    '<button class="btn ghost block" data-act="saveCharge" data-a="more">Lưu và thêm người khác</button><button class="btn cork block" data-act="pay">Ghi thu khác (tài trợ, dư quỹ…)</button>');
+  return sheetWrap(c?'Sửa khoản thu':'Ghi khoản thu',b);
  },
  exp:function(id){
   var e=null;if(id)S.expenses.forEach(function(y){if(y.id===id)e=y});
@@ -777,6 +801,7 @@ var SHEETS={
    '<div class="field"><span class="flabel">Sân mặc định</span><div class="courts" id="courts">'+courtChips(st.courts)+'</div><div class="addrow"><input id="f-court" inputmode="numeric" placeholder="Số sân" aria-label="Số sân"><button class="btn sm" data-act="addCourt">'+I.plus+'Thêm sân</button></div></div></div>'+
    '<div class="card" style="display:flex;flex-direction:column;gap:12px"><h3>Tiền</h3><div class="field"><label for="s-mfee">Quỹ tháng cho người cố định (đ)</label><input id="s-mfee" inputmode="numeric" value="'+st.monthlyFee+'"><span class="hint">Áp dụng cho các tháng chưa đặt riêng.</span></div>'+
    '<div class="field"><label for="s-wfee">Phí mỗi buổi cho vãng lai (đ)</label><input id="s-wfee" inputmode="numeric" value="'+st.walkinFee+'"></div>'+
+   '<div class="field"><label for="s-fstart">Quỹ bắt đầu từ tháng</label><input id="s-fstart" type="month" value="'+esc(fStart())+'"></div>'+
    '<div class="field"><label for="s-cats">Các loại chi (mỗi dòng một loại)</label><textarea id="s-cats">'+esc(st.categories.join('\n'))+'</textarea></div></div>'+
    '<div class="card" style="display:flex;flex-direction:column;gap:12px"><h3>Đóng tiền</h3><div class="field"><label for="s-bank">Ngân hàng</label><input id="s-bank" value="'+esc(st.bankName)+'" placeholder="vd: Vietcombank"></div>'+
    '<div class="field"><label for="s-acc">Số tài khoản</label><input id="s-acc" inputmode="numeric" value="'+esc(st.bankAccount)+'"></div>'+
@@ -786,8 +811,8 @@ var SHEETS={
    '<span class="hint">Thành viên sẽ thấy mục “Cách đóng tiền” ở tab Quỹ, có nút chép số tài khoản và tải mã QR.</span></div>'+
    '<div class="card" style="display:flex;flex-direction:column;gap:12px"><h3>Nhóm Zalo</h3><div class="field"><label for="s-zalo">Link nhóm Zalo</label><input id="s-zalo" inputmode="url" value="'+esc(st.zaloUrl)+'" placeholder="https://zalo.me/g/..."><span class="hint">Trong Zalo: vào nhóm, bấm ⋯, chọn “Link nhóm”, chép link dán vào đây.</span></div></div>'+
    '<button class="btn block" data-act="saveSettings">Lưu cài đặt</button>'+
-   '<div class="card" style="display:flex;flex-direction:column;gap:10px"><h3>Làm lại quỹ</h3><span class="hint">Xoá hết '+S.payments.length+' khoản thu và '+S.expenses.length+' khoản chi, quỹ về 0đ. Thành viên, lịch chơi, cài đặt và mã QR giữ nguyên.</span>'+
-   '<div id="del-zone"><button class="btn danger block" data-act="askDel" data-v="money:all"'+(S.payments.length||S.expenses.length?'':' disabled')+'>Xoá hết khoản thu và chi</button></div></div>';
+   '<div class="card" style="display:flex;flex-direction:column;gap:10px"><h3>Làm lại quỹ</h3><span class="hint">Xoá hết '+S.payments.length+' khoản thu, '+S.expenses.length+' khoản chi và danh sách phải thu, quỹ về 0đ. Thành viên, lịch chơi, cài đặt và mã QR giữ nguyên.</span>'+
+   '<div id="del-zone"><button class="btn danger block" data-act="askDel" data-v="money:all"'+(S.payments.length||S.expenses.length||(S.charges||[]).length?'':' disabled')+'>Xoá hết khoản thu và chi</button></div></div>';
   return sheetWrap('Cài đặt',b);
  },
  guide:function(){
@@ -874,7 +899,7 @@ function commit(msg){
   if(!V.fb){closeSheet();render();toast((msg||'Đã lưu')+' (bản thử, chưa lưu lên mạng)');return}
   var sp=splitS(),json=sp[0];V.busy=true;showSaving(true);
   V.fb.save(json,sp[1]).then(function(){V.lastJson=json;V.priv=JSON.parse(sp[1]);try{localStorage.setItem('cl-cache',json)}catch(e){}
-    V.busy=false;showSaving(false);closeSheet();render();toast(msg||'Đã lưu');
+    V.busy=false;showSaving(false);closeSheet();render();if(V.reopen){var ro=V.reopen;V.reopen=null;openSheet(ro[0],ro[1])}toast(msg||'Đã lưu');
   }).catch(function(e){
     V.busy=false;showSaving(false);var c=e&&e.code||'';
     if(/permission/.test(c)){V.canEdit=false;closeSheet();render();toast('Tài khoản này chỉ có quyền xem.');return}
@@ -896,10 +921,31 @@ var ACT={
  setTheme:function(v){themePref(v);applyTheme();openSheet('theme',null,true)},
  rpt:function(v){V.rp=v;render()},
  rpk:function(v){var t=V.rp||'m',ms=rpMonths(t,v),cur=mk(today()),a=ms[ms.length-1];if(a>cur&&ms[0]<=cur)a=cur;V.rm=a;render()},
+ charge:function(v){openSheet('charge',{month:v||curMonth()})},
+ chargeFor:function(v,a){openSheet('charge',{member:v,month:a})},
+ saveCharge:function(id,more){
+  var name=val('f-cname').trim().replace(/\s+/g,' ');if(!name){toast('Nhập tên người đóng');return}
+  var amt=toInt(val('f-camt'));if(!amt){toast('Nhập số tiền');return}
+  var m=val('f-cm')||curMonth();if(m<fStart()){toast('Quỹ bắt đầu từ '+mLabel(fStart()).toLowerCase());return}
+  var tb=document.querySelector('#f-ctype [aria-pressed="true"]'),type=tb?tb.getAttribute('data-v'):'fixed';
+  var low=name.toLowerCase(),x=null;S.members.forEach(function(y){if(!x&&y.name.trim().toLowerCase()===low)x=y});
+  if(!x){x={id:uid(),name:name,type:type,active:true};S.members.push(x)}
+  x.active=true;x.type=type;
+  if(!S.months[m])S.months[m]={fixed:fixedFor(m).slice()};
+  var fx=S.months[m].fixed||(S.months[m].fixed=[]),k=fx.indexOf(x.id);
+  if(type==='fixed'&&k<0)fx.push(x.id);if(type!=='fixed'&&k>=0)fx.splice(k,1);
+  if(!S.charges)S.charges=[];
+  var c=null;S.charges.forEach(function(y){if(id?y.id===id:(y.memberId===x.id&&y.month===m))c=y});
+  if(!c){c={id:uid()};S.charges.push(c)}
+  c.memberId=x.id;c.amount=amt;c.month=m;
+  S.charges=S.charges.filter(function(y){return y===c||!(y.memberId===c.memberId&&y.month===c.month)});
+  if(more)V.reopen=['charge',{month:m}];
+  commit('Đã ghi '+x.name+' phải đóng '+money(amt));
+ },
  untickNo:function(){V.untick=null;render()},
  untickYes:function(){var u=V.untick;if(!u)return;V.untick=null;var x=mem(u.id);S.payments=S.payments.filter(function(p){return !(p.memberId===u.id&&p.month===u.m)});commit('Đã bỏ đánh dấu '+(x?x.name:''))},
  tab:function(v){V.tab=v;closeSheet();render();window.scrollTo(0,0)},
- month:function(v){V.month=mAdd(curMonth(),+v);render()},
+ month:function(v){var n=mAdd(curMonth(),+v);if((V.tab==='quy')&&n<fStart())return;V.month=n;render()},
  close:closeSheet,
  qrView:function(){openSheet('qrView')},
  saveQr:function(){if(!qrOk(V.tmpQr)){toast('Chưa có ảnh mã QR');return}S.settings.qr=V.tmpQr;V.tmpQr=undefined;V.tmpQrOrig=null;commit('Đã lưu mã QR')},
@@ -1009,7 +1055,7 @@ var ACT={
   var old={day:st.day,start:st.start,end:st.end,courts:st.courts.slice(),since:st.since,monthlyFee:st.monthlyFee,walkinFee:st.walkinFee};
   st.teamName=val('s-name').trim()||'HCVN badminton chicken';st.venueName=val('s-venue').trim();st.mapUrl=map;st.day=+val('s-day');
   st.start=val('f-start')||st.start;st.end=val('f-end')||st.end;st.courts=V.tmpCourts.slice();
-  st.monthlyFee=toInt(val('s-mfee'));st.walkinFee=toInt(val('s-wfee'));
+  st.monthlyFee=toInt(val('s-mfee'));st.walkinFee=toInt(val('s-wfee'));st.fundStart=val('s-fstart')||st.fundStart||'2026-12';
   if(+old.day!==+st.day||old.start!==st.start||old.end!==st.end||old.courts.join(',')!==st.courts.join(','))freezeSchedule(old);
   freezeFees(old.monthlyFee,old.walkinFee);
   var zl=val('s-zalo').trim();if(zl&&!isUrl(zl)){toast('Link Zalo phải bắt đầu bằng https://');return}
@@ -1026,10 +1072,11 @@ var ACT={
  cancelDel:function(){openSheet(V.sheet[0],V.sheet[1],true)},
  doDel:function(v){
   var p=v.split(':'),kind=p[0],id=p[1];
-  if(kind==='member'){S.members=S.members.filter(function(x){return x.id!==id});Object.keys(S.months).forEach(function(m){S.months[m].fixed=(S.months[m].fixed||[]).filter(function(y){return y!==id})});Object.keys(S.sessions).forEach(function(d){var o=S.sessions[d];if(o.expected)o.expected=o.expected.filter(function(y){return y!==id});if(o.attended)o.attended=o.attended.filter(function(y){return y!==id})})}
+  if(kind==='member'){S.members=S.members.filter(function(x){return x.id!==id});S.charges=(S.charges||[]).filter(function(x){return x.memberId!==id});Object.keys(S.months).forEach(function(m){S.months[m].fixed=(S.months[m].fixed||[]).filter(function(y){return y!==id})});Object.keys(S.sessions).forEach(function(d){var o=S.sessions[d];if(o.expected)o.expected=o.expected.filter(function(y){return y!==id});if(o.attended)o.attended=o.attended.filter(function(y){return y!==id})})}
   if(kind==='pay')S.payments=S.payments.filter(function(x){return x.id!==id});
   if(kind==='exp')S.expenses=S.expenses.filter(function(x){return x.id!==id});
-  if(kind==='money'){S.payments=[];S.expenses=[];commit('Đã xoá hết thu chi, quỹ về 0đ');return}
+  if(kind==='charge')S.charges=(S.charges||[]).filter(function(x){return x.id!==id});
+  if(kind==='money'){S.payments=[];S.expenses=[];S.charges=[];commit('Đã xoá hết thu chi, quỹ về 0đ');return}
   commit('Đã xoá');
  }
 };
@@ -1075,6 +1122,7 @@ document.addEventListener('paste',function(ev){
   shrinkImage(f,function(d,orig){if(!d){toast('Không đọc được ảnh vừa dán');return}V.tmpQr=d;V.tmpQrOrig=orig;var el=document.getElementById('qr-edit');if(el)el.innerHTML=qrEditInner();toast('Đã nhận ảnh. Bấm “Lưu mã QR”.')});
 });
 document.addEventListener('input',function(ev){
+  if(ev.target.id==='f-cname'){var nm=ev.target.value.trim().toLowerCase(),x=null;S.members.forEach(function(y){if(!x&&y.name.trim().toLowerCase()===nm)x=y});if(x){var mm=val('f-cm')||curMonth(),f=fixedFor(mm).indexOf(x.id)>=0||(!S.months[mm]&&x.type==='fixed');document.querySelectorAll('#f-ctype button').forEach(function(b){b.setAttribute('aria-pressed',String((b.getAttribute('data-v')==='fixed')===f))});var cc=null;(S.charges||[]).forEach(function(y){if(y.memberId===x.id&&y.month===mm)cc=y});var a=document.getElementById('f-camt');if(cc&&a&&!a.value)a.value=fmtNum(cc.amount)}}
   var t=ev.target;if(t&&MONEY_IDS.indexOf(t.id)>=0){var pos=t.selectionStart==null?t.value.length:t.selectionStart,nd=t.value.slice(0,pos).replace(/\D/g,'').length,nv=fmtNum(t.value);if(nv!==t.value){t.value=nv;var i=0,c=0;while(i<nv.length&&c<nd){if(/\d/.test(nv[i]))c++;i++}try{t.setSelectionRange(i,i)}catch(e){}}}
   if(ev.target.id==='f-q'){var q=ev.target.value.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'d');
    document.querySelectorAll('#checks .check').forEach(function(c){var t=c.textContent.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'d');c.hidden=q&&t.indexOf(q)<0})}
