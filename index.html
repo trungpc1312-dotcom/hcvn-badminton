@@ -366,10 +366,10 @@ function render(){
     '<button role="menuitem" data-act="menuGo" data-v="themeSheet">'+I.theme+'Giao diện sáng/tối</button>'+
     '<button role="menuitem" data-act="menuGo" data-v="guide">'+I.help+'Hướng dẫn</button>'+
     (V.fb?(V.user?'<button role="menuitem" data-act="menuGo" data-v="logout">'+I.ppl+'Đăng xuất</button>':'<button role="menuitem" data-act="menuGo" data-v="login">'+I.ppl+'Trưởng nhóm đăng nhập</button>'):'')+'</div>';
-  if(!V.canEdit&&(V.tab==='tv'||V.tab==='bc'))V.tab='lich';
-  var views=V.canEdit?{lich:tabLich,tv:tabTV,quy:tabQuy,bc:tabBC}:{lich:mLich,quy:mTien};
+  if(!V.canEdit&&V.tab==='bc')V.tab='lich';
+  var views=V.canEdit?{lich:tabLich,tv:tabTV,quy:tabQuy,bc:tabBC}:{lich:mLich,tv:tabTV,quy:mTien};
   h+='<main><div class="wrap">'+(V.loading?'<div class="empty">Đang tải dữ liệu…</div>':(views[V.tab]||views.lich)()+updLabel())+'</div></main>';
-  var tabs=V.canEdit?[['lich','Lịch chơi',I.cal],['tv','Thành viên',I.ppl],['quy','Quỹ',I.wal],['bc','Báo cáo',I.chart]]:[['lich','Lịch chơi',I.cal],['quy','Quỹ',I.wal]];
+  var tabs=V.canEdit?[['lich','Lịch chơi',I.cal],['tv','Thành viên',I.ppl],['quy','Quỹ',I.wal],['bc','Báo cáo',I.chart]]:[['lich','Lịch chơi',I.cal],['tv','Thành viên',I.ppl],['quy','Quỹ',I.wal]];
   h+='<nav class="tabs"><div class="wrap" style="grid-template-columns:repeat('+tabs.length+',1fr)">'+tabs.map(function(t){return '<button data-act="tab" data-v="'+t[0]+'"'+(V.tab===t[0]?' aria-current="page"':'')+'>'+t[2]+t[1]+'</button>'}).join('')+'</div></nav>';
   h+='<div id="sheet-root"></div>';
   app.innerHTML=h;
@@ -657,7 +657,7 @@ var SHEETS={
    if(!x)return sheetWrap('Thành viên','');
    var r=null;dues(curMonth()).forEach(function(y){if(y.id===id)r=y});
    var tdx=totalDebts()[id];
-   return sheetWrap(x.name,'<div class="card" style="display:flex;flex-direction:column;gap:6px">'+(tdx&&tdx.owe>0?'<div><span class="chip warn num">Còn chưa đóng '+money(tdx.owe)+'</span></div>':'')+(false&&x.phone?'<div>☎ <span style="user-select:all">'+esc(x.phone)+'</span></div>':'')+(x.note?'<div>'+esc(x.note)+'</div>':'')+
+   return sheetWrap(x.name,'<div class="card" style="display:flex;flex-direction:column;gap:6px">'+(tdx&&tdx.owe>0?'<div><span class="chip warn num">Còn chưa đóng '+money(tdx.owe)+'</span></div>':'')+
     '<div class="muted">'+mLabel(curMonth())+': '+(r?r.sessions+' buổi · phải đóng '+money(r.due)+' · đã đóng '+money(r.paid):'chưa có hoạt động')+'</div></div>'+(tdx&&tdx.owe>0?payBox(x.name,tdx.owe,tdx.months[0]&&tdx.months[0].m):''));
   }
   var b='<div class="card" style="display:flex;flex-direction:column;gap:12px"><div class="field"><label for="f-name">Tên</label><input id="f-name" value="'+esc(x?x.name:'')+'" placeholder="vd: Anh Tuấn"></div>'+
