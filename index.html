@@ -100,6 +100,7 @@ h3{font-size:13px;margin:0;font-weight:700;text-transform:uppercase;letter-spaci
 .btn.cork{background:var(--court-soft);color:var(--court)}
 .btn.danger{background:var(--bad-soft);color:var(--bad)}
 .btn.block{width:100%}
+.btn:disabled{opacity:.45;cursor:default}
 .btnrow .btn{text-align:center}
 .hero .btnrow .btn{flex:1 1 0;min-width:0;padding-inline:8px}
 .btn.sm{min-height:36px;padding:6px 12px;font-size:14px;white-space:nowrap;flex:none}
@@ -759,7 +760,9 @@ var SHEETS={
    '<div class="field"><span class="flabel">Mã QR chuyển khoản</span><div class="qr-edit" id="qr-edit">'+qrEditInner()+'</div><span class="hint">Chụp màn hình mã QR trong app ngân hàng. Nên cắt ảnh trong mục Ảnh của điện thoại cho chỉ còn phần mã QR, rồi chọn ảnh đó.</span></div>'+
    '<span class="hint">Thành viên sẽ thấy mục “Cách đóng tiền” ở tab Quỹ, có nút chép số tài khoản và tải mã QR.</span></div>'+
    '<div class="card" style="display:flex;flex-direction:column;gap:12px"><h3>Nhóm Zalo</h3><div class="field"><label for="s-zalo">Link nhóm Zalo</label><input id="s-zalo" inputmode="url" value="'+esc(st.zaloUrl)+'" placeholder="https://zalo.me/g/..."><span class="hint">Trong Zalo: vào nhóm, bấm ⋯, chọn “Link nhóm”, chép link dán vào đây.</span></div></div>'+
-   '<button class="btn block" data-act="saveSettings">Lưu cài đặt</button>';
+   '<button class="btn block" data-act="saveSettings">Lưu cài đặt</button>'+
+   '<div class="card" style="display:flex;flex-direction:column;gap:10px"><h3>Làm lại quỹ</h3><span class="hint">Xoá hết '+S.payments.length+' khoản thu và '+S.expenses.length+' khoản chi, quỹ về 0đ. Thành viên, lịch chơi, cài đặt và mã QR giữ nguyên.</span>'+
+   '<div id="del-zone"><button class="btn danger block" data-act="askDel" data-v="money:all"'+(S.payments.length||S.expenses.length?'':' disabled')+'>Xoá hết khoản thu và chi</button></div></div>';
   return sheetWrap('Cài đặt',b);
  },
  guide:function(){
@@ -999,6 +1002,7 @@ var ACT={
   if(kind==='member'){S.members=S.members.filter(function(x){return x.id!==id});Object.keys(S.months).forEach(function(m){S.months[m].fixed=(S.months[m].fixed||[]).filter(function(y){return y!==id})});Object.keys(S.sessions).forEach(function(d){var o=S.sessions[d];if(o.expected)o.expected=o.expected.filter(function(y){return y!==id});if(o.attended)o.attended=o.attended.filter(function(y){return y!==id})})}
   if(kind==='pay')S.payments=S.payments.filter(function(x){return x.id!==id});
   if(kind==='exp')S.expenses=S.expenses.filter(function(x){return x.id!==id});
+  if(kind==='money'){S.payments=[];S.expenses=[];commit('Đã xoá hết thu chi, quỹ về 0đ');return}
   commit('Đã xoá');
  }
 };
