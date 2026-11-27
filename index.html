@@ -1176,7 +1176,8 @@ function onData(json,exists){
   try{S=JSON.parse(json)}catch(e){return}normS();if(V.canEdit)mergePriv();V.loading=false;
   if(V.busy)return;var keep=V.sheet&&V.canEdit;render();setTimeout(fixOnce,0);if(keep)return;
 }
-function fixOnce(){if(!V.canEdit||V.loading||V.busy||!S||!S.expenses)return;var n=0;S.expenses.forEach(function(e){if((e.id==='ryj08pm'||e.id==='axyzn4d')&&e.date<'2026-12-01'){e.date='2026-12-01';n++}});if(n)commit('Đã chuyển '+n+' khoản chi sang tháng 12')}
+function fixOnce(){if(!V.canEdit||V.loading||V.busy||!S||!S.expenses)return;var n=0;S.expenses.forEach(function(e){if((e.id==='ryj08pm'||e.id==='axyzn4d')&&e.date<'2026-12-01'){e.date='2026-12-01';n++}});var CH=['szvoqae','3s53fwr','qscwvi4','xo0uyya','u7btl0g','3pzy64n','87e7kk3','mnvdhyw'],k=0;(S.charges||[]).forEach(function(c){if(CH.indexOf(c.id)>=0&&c.month==='2026-12'&&c.amount===414000){c.amount=275000;k++}});S.payments.forEach(function(p){if(p.id==='97azzns'&&p.amount===414000){p.amount=275000;k++}});
+  if(n||k)commit(k?'Đã sửa tiền quỹ tháng 12 thành 275.000đ':'Đã chuyển '+n+' khoản chi sang tháng 12')}
 function splitS(){var pub=JSON.parse(JSON.stringify(S)),ph={};(pub.members||[]).forEach(function(m){if(m.phone)ph[m.id]=m.phone;delete m.phone});return [JSON.stringify(pub),JSON.stringify({phones:ph})]}
 function mergePriv(){var ph=V.priv&&V.priv.phones;if(!ph)return;(S.members||[]).forEach(function(m){if(ph[m.id])m.phone=ph[m.id]})}
 function stripPriv(){(S.members||[]).forEach(function(m){delete m.phone})}
