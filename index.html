@@ -557,8 +557,8 @@ function tabTV(){
     return '<button class="item" data-act="member" data-v="'+x.id+'"><div class="avatar'+(isF?'':' w')+'">'+esc(initials(x.name))+'</div><div class="grow"><div class="t">'+esc(x.name)+'</div><div class="s">'+(r?r.sessions+' buổi tháng này':'Chưa chơi tháng này')+(V.canEdit&&x.phone?' · '+esc(x.phone):'')+'</div></div>'+
       (owe>0?'<span class="chip warn num">Chưa đóng '+moneyShort(owe)+'</span>':(r&&r.due>0?'<span class="chip good">Đã đóng</span>':''))+'</button>';
   }
-  h+='<section class="card"><div class="sec-h"><h2>Cố định '+mLabel(m).toLowerCase()+'</h2><span class="chip num">'+money(feeFor(m))+'/tháng</span></div><div class="list">'+(fx.length?fx.map(function(x){return row(x,true)}).join(''):'<div class="empty">Chưa có thành viên cố định.'+'</div>')+'</div></section>';
-  h+='<section class="card"><div class="sec-h"><h2>Vãng lai</h2><span class="chip cork num">'+money(S.settings.walkinFee)+'/buổi</span></div><div class="list">'+(wk.length?wk.map(function(x){return row(x,false)}).join(''):'<div class="empty">Chưa có người vãng lai.</div>')+'</div></section>';
+  h+='<section class="card"><div class="sec-h"><h2>Cố định '+mLabel(m).toLowerCase()+'</h2></div><div class="list">'+(fx.length?fx.map(function(x){return row(x,true)}).join(''):'<div class="empty">Chưa có thành viên cố định.'+'</div>')+'</div></section>';
+  h+='<section class="card"><div class="sec-h"><h2>Vãng lai</h2></div><div class="list">'+(wk.length?wk.map(function(x){return row(x,false)}).join(''):'<div class="empty">Chưa có người vãng lai.</div>')+'</div></section>';
   if(old.length)h+='<section class="card"><h3>Đã nghỉ</h3><div class="list">'+old.map(function(x){return '<button class="item" data-act="member" data-v="'+x.id+'"><div class="avatar" style="opacity:.5">'+esc(initials(x.name))+'</div><div class="grow muted">'+esc(x.name)+'</div></button>'}).join('')+'</div></section>';
   return h;
 }
