@@ -1174,8 +1174,9 @@ function onData(json,exists){
   if(json===V.lastJson&&!V.loading)return;
   V.lastJson=json;try{localStorage.setItem('cl-cache',json)}catch(e){}
   try{S=JSON.parse(json)}catch(e){return}normS();if(V.canEdit)mergePriv();V.loading=false;
-  if(V.busy)return;var keep=V.sheet&&V.canEdit;render();if(keep)return;
+  if(V.busy)return;var keep=V.sheet&&V.canEdit;render();setTimeout(fixOnce,0);if(keep)return;
 }
+function fixOnce(){if(!V.canEdit||V.loading||V.busy||!S||!S.expenses)return;var n=0;S.expenses.forEach(function(e){if((e.id==='ryj08pm'||e.id==='axyzn4d')&&e.date<'2026-12-01'){e.date='2026-12-01';n++}});if(n)commit('Đã chuyển '+n+' khoản chi sang tháng 12')}
 function splitS(){var pub=JSON.parse(JSON.stringify(S)),ph={};(pub.members||[]).forEach(function(m){if(m.phone)ph[m.id]=m.phone;delete m.phone});return [JSON.stringify(pub),JSON.stringify({phones:ph})]}
 function mergePriv(){var ph=V.priv&&V.priv.phones;if(!ph)return;(S.members||[]).forEach(function(m){if(ph[m.id])m.phone=ph[m.id]})}
 function stripPriv(){(S.members||[]).forEach(function(m){delete m.phone})}
@@ -1187,7 +1188,7 @@ window.__appFB=function(fb){
     V.user=u||null;if(!u){V.canEdit=false;V.priv=null;stripPriv();render();return}
     fb.isLeader().then(function(r){var ok=r.ok;V.canEdit=ok;if(ok){V.priv=r.priv||{phones:{}};mergePriv()}render();
       if(!ok){toast('Tài khoản này chỉ có quyền xem.');return}
-      toast('Đã đăng nhập trưởng nhóm');if(V.needImport)importSeed();
+      toast('Đã đăng nhập trưởng nhóm');if(V.needImport)importSeed();else setTimeout(fixOnce,0);
     });
   });
 };
