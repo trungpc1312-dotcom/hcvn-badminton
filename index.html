@@ -210,6 +210,17 @@ details.fold>.in{padding:0 14px 14px;display:flex;flex-direction:column;gap:12px
 .vbars b{font-size:12px;line-height:1}
 .vbars span{font-size:11px;color:var(--muted);white-space:nowrap}
 .vbars.dense span{font-size:9px;letter-spacing:-.02em}
+
+.plist{display:flex;flex-direction:column;margin-top:4px}
+.prow{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--line)}
+.prow:first-child{border-top:0}
+.prow .t{font-weight:700}
+.prow .amt{font-weight:700;font-size:16px;white-space:nowrap;text-align:right}
+.prow .unset{font-size:12px;color:var(--muted);font-weight:600}
+.ptick{width:26px;height:26px;margin:0;flex:none;accent-color:var(--court);cursor:pointer}
+.ptick:disabled{opacity:.35;cursor:default}
+.tickbox{width:26px;height:26px;border-radius:7px;border:2px solid var(--muted);display:grid;place-items:center;flex:none;opacity:.6}
+.tickbox.on{background:var(--court);border-color:var(--court);color:var(--court-ink);opacity:1}
 table.debt{width:100%;border-collapse:collapse;font-size:14px}
 table.debt td{padding:9px 4px;border-top:1px solid var(--line);vertical-align:middle}
 table.debt tr:first-child td{border-top:0}
@@ -407,6 +418,24 @@ function qrBlock(){
   var st=S.settings;if(!qrOk(st.qr))return '';
   return '<div class="qr"><img src="'+st.qr+'" alt="Mã QR chuyển khoản" data-act="qrView">'+(V.dl?'<button class="btn sm" data-act="dlQr">Tải mã QR về máy</button>':'')+'<span class="hint small">'+(V.dl?'Chạm để phóng to, hoặc giữ để lưu ảnh.':'Chạm để phóng to, giữ để lưu ảnh rồi quét bằng app ngân hàng.')+'</span></div>';
 }
+function payStatus(m,nav){
+  var rows=dues(m).filter(function(r){return r.fixed||r.sessions>0||r.paid>0}).sort(function(a,b){return (b.fixed-a.fixed)||a.name.localeCompare(b.name,'vi')});
+  var h='<section class="card"><div class="sec-h"><h2>'+(nav?'Đóng tiền':'Đóng tiền '+mLabel(m).toLowerCase())+'</h2></div>';
+  if(nav)h+='<div class="monthnav" style="margin-top:8px"><button class="mbtn" data-act="month" data-v="-1" aria-label="Tháng trước">‹</button><b style="font-size:15px">'+mLabel(m)+'</b><button class="mbtn" data-act="month" data-v="1" aria-label="Tháng sau">›</button></div>';
+  if(!rows.length)return h+'<div class="empty">Chưa có ai phải đóng tiền tháng này.<br><span class="small">Tiền được tính khi có người cố định hoặc khi điểm danh buổi chơi.</span></div></section>';
+  h+='<div class="plist">';
+  rows.forEach(function(r){
+    var done=r.due>0&&r.paid>=r.due,unset=r.due<=0&&r.paid<=0;
+    h+='<div class="prow"><div class="grow"><div class="t">'+esc(r.name)+'</div><div class="small muted">'+(r.fixed?'Cố định':'Vãng lai · '+r.sessions+' buổi')+(r.paid>0&&!done&&r.due>0?' · đã đóng '+moneyShort(r.paid):'')+'</div></div>'+
+      '<div class="amt num">'+(unset?'<span class="unset">Chưa đặt tiền</span>':money(r.due))+'</div>'+
+      (V.canEdit?'<input type="checkbox" class="ptick" aria-label="'+esc(r.name)+' đã đóng" data-id="'+r.id+'" data-m="'+m+'"'+(done?' checked':'')+(unset||(r.due<=0&&!done)?' disabled':'')+'>':'<span class="tickbox'+(done?' on':'')+'" role="img" aria-label="'+(done?'Đã đóng':'Chưa đóng')+'">'+(done?I.check.replace('<svg','<svg width="16" height="16"'):'')+'</span>')+'</div>';
+    if(V.canEdit&&V.untick&&V.untick.id===r.id&&V.untick.m===m){
+      var ps=S.payments.filter(function(p){return p.memberId===r.id&&p.month===m}),sum=ps.reduce(function(t,p){return t+p.amount},0);
+      h+='<div class="confirm" style="margin:0 0 10px">Xoá '+(ps.length>1?ps.length+' khoản thu':'khoản thu')+' '+money(sum)+' của '+esc(r.name)+' ('+mLabel(m).toLowerCase()+')?<div class="btnrow"><button class="btn ghost" data-act="untickNo">Thôi</button><button class="btn danger" data-act="untickYes">Xoá</button></div></div>';
+    }
+  });
+  return h+'</div></section>';
+}
 function payBox(name,amount,month){
   var st=S.settings;
   if(!st.bankAccount&&!qrOk(st.qr))return V.canEdit?'<section class="card"><h2>Đóng quỹ</h2><p class="muted small" style="margin:8px 0 0">Chưa có số tài khoản. Bấm ⚙ Cài đặt để thêm, thành viên sẽ thấy ở đây.</p></section>':'';
@@ -470,6 +499,7 @@ function mTien(){
   if(!debtors.length)h+='<div class="empty">Đủ hết rồi.</div>';
   debtors.forEach(function(x){h+='<button class="item" data-act="member" data-v="'+x.id+'"><div class="grow"><div class="t">'+esc(x.name)+'</div><div class="s">'+x.months.map(function(o){return 'T'+(+o.m.split('-')[1])+': '+moneyShort(o.owe)}).join(' · ')+'</div></div><span class="chip warn num">'+money(x.owe)+'</span></button>'});
   h+='</div></section>';
+  h+=payStatus(curMonth(),true);
   var tx=[];S.payments.forEach(function(p){if(p.month===cur)tx.push({k:'p',d:p.date,o:p})});S.expenses.forEach(function(e){if(mk(e.date)===cur)tx.push({k:'e',d:e.date,o:e})});
   tx.sort(function(a,b){return a.d<b.d?1:-1});
   h+='<details class="fold"><summary>Thu chi chi tiết</summary><div class="in">'+chart6(cur)+'<h3>Sổ thu chi '+mLabel(cur).toLowerCase()+'</h3><div class="list">'+(tx.length?tx.map(function(t){var o=t.o,isP=t.k==='p',dd=pd(t.d);
@@ -524,18 +554,7 @@ function tabQuy(){
   }
   h+=payBox(null,0,m);
   if(V.canEdit)h+='<div class="btnrow"><button class="btn" data-act="pay">'+I.plus+'Ghi khoản thu</button><button class="btn cork" data-act="exp">'+I.plus+'Ghi khoản chi</button></div>';
-  h+='<section class="card"><div class="sec-h"><h2>Ai đã đóng, ai chưa</h2></div>';
-  if(!rows.length)h+='<div class="empty">Chưa có ai phải đóng tiền tháng này.<br><span class="small">Tiền được tính khi có người cố định hoặc khi điểm danh buổi chơi.</span></div>';
-  else{
-    h+='<table class="debt">';
-    rows.forEach(function(r){
-      h+='<tr><td><div style="font-weight:700">'+esc(r.name)+'</div><div class="small muted">'+(r.fixed?'Cố định':'Vãng lai · '+r.sessions+' buổi')+' · phải đóng '+money(r.due)+'</div></td><td style="text-align:right">'+
-        (r.owe>0?'<span class="chip warn num">Chưa đóng '+money(r.owe)+'</span>':(r.owe<0?'<span class="chip good num">Dư '+money(-r.owe)+'</span>':'<span class="chip good">'+I.check.replace('<svg','<svg width="14" height="14"')+'Đủ</span>'))+
-        (V.canEdit&&r.owe>0?'<div style="margin-top:6px"><button class="btn sm ghost" data-act="payQuick" data-v="'+r.id+'" data-a="'+r.owe+'">Đã đóng</button></div>':'')+'</td></tr>';
-    });
-    h+='</table>';
-  }
-  h+='</section>';
+  h+=payStatus(m,false);
   var tx=[];
   S.payments.forEach(function(p){if(p.month===m)tx.push({k:'p',d:p.date,o:p})});
   S.expenses.forEach(function(e){if(mk(e.date)===m)tx.push({k:'e',d:e.date,o:e})});
@@ -871,6 +890,8 @@ var ACT={
  setTheme:function(v){themePref(v);applyTheme();openSheet('theme',null,true)},
  rpt:function(v){V.rp=v;render()},
  rpk:function(v){var t=V.rp||'m',ms=rpMonths(t,v),cur=mk(today()),a=ms[ms.length-1];if(a>cur&&ms[0]<=cur)a=cur;V.rm=a;render()},
+ untickNo:function(){V.untick=null;render()},
+ untickYes:function(){var u=V.untick;if(!u)return;V.untick=null;var x=mem(u.id);S.payments=S.payments.filter(function(p){return !(p.memberId===u.id&&p.month===u.m)});commit('Đã bỏ đánh dấu '+(x?x.name:''))},
  tab:function(v){V.tab=v;closeSheet();render();window.scrollTo(0,0)},
  month:function(v){V.month=mAdd(curMonth(),+v);render()},
  close:closeSheet,
@@ -1024,6 +1045,11 @@ document.addEventListener('click',function(ev){
 document.addEventListener('change',function(ev){
   if(ev.target.name==='pk')updCount();
   if(ev.target.name==='pm'||ev.target.id==='f-pm')payUpd();
+  if(ev.target.classList&&ev.target.classList.contains('ptick')){var el=ev.target,id=el.getAttribute('data-id'),m=el.getAttribute('data-m');
+   if(!V.canEdit||V.busy){el.checked=!el.checked;return}
+   if(el.checked){var r=dues(m).filter(function(y){return y.id===id})[0];var owe=r?r.due-r.paid:0;if(owe<=0){el.checked=false;return}
+    V.untick=null;S.payments.push({id:uid(),memberId:id,amount:owe,month:m,date:today(),note:''});commit('Đã ghi '+mname(id)+' đóng '+money(owe))}
+   else{el.checked=true;V.untick={id:id,m:m};render()}}
   if(ev.target.id==='f-play'&&ev.target.value){var d=ev.target.value,pmE=document.getElementById('f-pm');if(pmE)pmE.value=mk(d);var a=document.getElementById('f-amt');if(a&&!a.value){var f=sessFee(getSession(d));if(f)a.value=f}payUpd()}
   if(ev.target.id==='f-qr'&&ev.target.files&&ev.target.files[0]){
    var f=ev.target.files[0];if(f.type&&!/^image\//.test(f.type)){toast('Hãy chọn một ảnh');return}
