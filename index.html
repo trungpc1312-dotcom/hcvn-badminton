@@ -226,6 +226,10 @@ details.fold>.in{padding:0 14px 14px;display:flex;flex-direction:column;gap:12px
 .sugs{display:flex;flex-wrap:wrap;gap:6px}
 .sugs:empty{display:none}
 .sugs .chip{border:0;padding:7px 12px;font-size:14px;cursor:pointer}
+.chip.pick{background:var(--line);color:var(--ink);border:0;padding:8px 14px;font-size:15px;cursor:pointer}
+.chip.pick[aria-pressed="true"]{background:var(--court);color:var(--court-ink)}
+.chip.pick[aria-pressed="true"]::before{content:"✓";margin-right:6px;font-weight:800}
+.linkbtn{border:0;background:none;color:var(--accent);font-weight:700;font-size:13px;padding:4px 0;cursor:pointer}
 .field select{appearance:auto}
 .ptick:disabled{opacity:.35;cursor:default}
 .tickbox{width:26px;height:26px;border-radius:7px;border:2px solid var(--muted);display:grid;place-items:center;flex:none;opacity:.6}
@@ -434,16 +438,17 @@ function payDeadline(){var d=+S.settings.payDay;return d>=1&&d<=31?'Đóng trư�
 function qrOk(u){return /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+\/=]+$/.test(u||'')}
 function qrBlock(){
   var st=S.settings;if(!qrOk(st.qr))return '';
-  return '<div class="qr"><img src="'+st.qr+'" alt="Mã QR chuyển khoản" data-act="qrView">'+(V.dl?'<button class="btn sm" data-act="dlQr">Tải mã QR về máy</button>':'')+'<span class="hint small">'+(V.dl?'Chạm để phóng to, hoặc giữ để lưu ảnh.':'Chạm để phóng to, giữ để lưu ảnh rồi quét bằng app ngân hàng.')+'</span></div>';
+  return '<div class="qr"><img src="'+st.qr+'" alt="Mã QR chuyển khoản" data-act="qrView">'+(V.dl?'<button class="btn sm" data-act="dlQr">Tải mã QR về máy</button>':'')+'<span hidden>'+(V.dl?'':'Chạm để phóng to, giữ để lưu ảnh rồi quét bằng app ngân hàng.')+'</span></div>';
 }
 function nkey(t){return String(t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').trim()}
 function nameSugs(q){var k=nkey(q);var l=S.members.filter(function(y){return y.active!==false&&(!k||nkey(y.name).indexOf(k)>=0)}).sort(byName);if(k&&l.length===1&&nkey(l[0].name)===k)return '';return l.slice(0,k?6:12).map(function(y){return '<button class="chip grey" data-act="pickName" data-v="'+y.id+'">'+esc(y.name)+'</button>'}).join('')}
 function chargeFill(x){var mm=val('f-cm')||curMonth(),f=fixedFor(mm).indexOf(x.id)>=0||(!S.months[mm]&&x.type==='fixed');document.querySelectorAll('#f-ctype button').forEach(function(b){b.setAttribute('aria-pressed',String((b.getAttribute('data-v')==='fixed')===f))});var cc=null;(S.charges||[]).forEach(function(y){if(y.memberId===x.id&&y.month===mm)cc=y});var a=document.getElementById('f-camt');if(cc&&a&&!a.value)a.value=fmtNum(cc.amount)}
+function cpUpd(){var n=document.querySelectorAll('#f-cpick .pick[aria-pressed="true"]').length,c=document.getElementById('cp-count');if(c)c.textContent=n;var on=[].slice.call(document.querySelectorAll('#f-cpick .pick[aria-pressed="true"][data-v]'));if(on.length===1&&n===1){var x=mem(on[0].getAttribute('data-v'));if(x)chargeFill(x)}}
 function payStatus(m,nav){
   var rows=dues(m).filter(function(r){return r.fixed||r.sessions>0||r.paid>0||r.charged}).sort(function(a,b){return (b.fixed-a.fixed)||a.name.localeCompare(b.name,'vi')});
   var h='<section class="card"><div class="sec-h"><h2>'+(nav?'Đóng tiền':'Đóng tiền '+mLabel(m).toLowerCase())+'</h2></div>';
   if(nav)h+='<div class="monthnav" style="margin-top:8px"><button class="mbtn" data-act="month" data-v="-1" aria-label="Tháng trước"'+(m<=fStart()?' disabled':'')+'>‹</button><b style="font-size:15px">'+mLabel(m)+'</b><button class="mbtn" data-act="month" data-v="1" aria-label="Tháng sau">›</button></div>';
-  if(!rows.length)return h+'<div class="empty">Chưa có ai phải đóng tiền tháng này.<br><span class="small">Tiền được tính khi có người cố định hoặc khi điểm danh buổi chơi.</span></div></section>';
+  if(!rows.length)return h+'<div class="empty">Chưa có ai phải đóng tiền tháng này.</div></section>';
   h+='<div class="plist">';
   rows.forEach(function(r){
     var done=r.paid>0&&r.paid>=r.due,unset=r.due<=0&&r.paid<=0;
@@ -459,7 +464,7 @@ function payStatus(m,nav){
 }
 function payBox(name,amount,month){
   var st=S.settings;
-  if(!st.bankAccount&&!qrOk(st.qr))return V.canEdit?'<section class="card"><h2>Đóng quỹ</h2><p class="muted small" style="margin:8px 0 0">Chưa có số tài khoản. Bấm ⚙ Cài đặt để thêm, thành viên sẽ thấy ở đây.</p></section>':'';
+  if(!st.bankAccount&&!qrOk(st.qr))return V.canEdit?'<section class="card"><h2>Đóng quỹ</h2><p class="muted small" style="margin:8px 0 0">Chưa có số tài khoản.</p></section>':'';
   var note=(name?name:'Tên bạn')+' - quỹ T'+(+(month||curMonth()).split('-')[1]);
   return '<section class="card paybox"><h2>Đóng quỹ</h2>'+
    (amount?'<div class="chip warn num" style="align-self:flex-start">Số tiền: '+money(amount)+'</div>':'')+qrBlock()+
@@ -552,7 +557,7 @@ function tabTV(){
     return '<button class="item" data-act="member" data-v="'+x.id+'"><div class="avatar'+(isF?'':' w')+'">'+esc(initials(x.name))+'</div><div class="grow"><div class="t">'+esc(x.name)+'</div><div class="s">'+(r?r.sessions+' buổi tháng này':'Chưa chơi tháng này')+(V.canEdit&&x.phone?' · '+esc(x.phone):'')+'</div></div>'+
       (owe>0?'<span class="chip warn num">Chưa đóng '+moneyShort(owe)+'</span>':(r&&r.due>0?'<span class="chip good">Đã đóng</span>':''))+'</button>';
   }
-  h+='<section class="card"><div class="sec-h"><h2>Cố định '+mLabel(m).toLowerCase()+'</h2><span class="chip num">'+money(feeFor(m))+'/tháng</span></div><div class="list">'+(fx.length?fx.map(function(x){return row(x,true)}).join(''):'<div class="empty">Chưa có thành viên cố định.'+(V.canEdit?' Bấm “Thêm người” để bắt đầu.':'')+'</div>')+'</div></section>';
+  h+='<section class="card"><div class="sec-h"><h2>Cố định '+mLabel(m).toLowerCase()+'</h2><span class="chip num">'+money(feeFor(m))+'/tháng</span></div><div class="list">'+(fx.length?fx.map(function(x){return row(x,true)}).join(''):'<div class="empty">Chưa có thành viên cố định.'+'</div>')+'</div></section>';
   h+='<section class="card"><div class="sec-h"><h2>Vãng lai</h2><span class="chip cork num">'+money(S.settings.walkinFee)+'/buổi</span></div><div class="list">'+(wk.length?wk.map(function(x){return row(x,false)}).join(''):'<div class="empty">Chưa có người vãng lai.</div>')+'</div></section>';
   if(old.length)h+='<section class="card"><h3>Đã nghỉ</h3><div class="list">'+old.map(function(x){return '<button class="item" data-act="member" data-v="'+x.id+'"><div class="avatar" style="opacity:.5">'+esc(initials(x.name))+'</div><div class="grow muted">'+esc(x.name)+'</div></button>'}).join('')+'</div></section>';
   return h;
@@ -651,27 +656,27 @@ function openSheet(name,arg,keep){
   var f=SHEETS[name];if(!f){closeSheet();return}
   root.innerHTML=f(arg);
   fmtMoneyAll();
-  if(!keep&&name==='charge'&&arg&&arg.member){var fa=document.getElementById('f-camt');if(fa&&!fa.value)setTimeout(function(){try{fa.focus()}catch(e){}},250)}
+  if(!keep&&name==='charge'&&arg&&arg.tick){var fa=document.getElementById('f-camt');if(fa&&!fa.value)setTimeout(function(){try{fa.focus()}catch(e){}},250)}
   if(!keep){var s=root.querySelector('.sheet');if(s)s.scrollTop=0}
 }
 function closeSheet(){try{if(document.activeElement&&document.activeElement.blur)document.activeElement.blur()}catch(e){}V.sheet=null;V.pendNew=[];V.pendChecked=null;var r=document.getElementById('sheet-root');if(r)r.innerHTML=''}
 function memberChecks(sel,ids){
   var m=curMonth(),fx=fixedFor(m);
   var list=S.members.concat(V.pendNew||[]).filter(function(x){return x.active!==false||ids.indexOf(x.id)>=0}).sort(function(a,b){return (fx.indexOf(b.id)>=0)-(fx.indexOf(a.id)>=0)||byName(a,b)});
-  if(!list.length)return '<div class="empty">Chưa có thành viên. Thêm tên ở ô bên dưới.</div>';
+  if(!list.length)return '<div class="empty">Chưa có thành viên.</div>';
   return list.map(function(x){var on=ids.indexOf(x.id)>=0;return '<label class="check"><input type="checkbox" name="'+sel+'" value="'+x.id+'"'+(on?' checked':'')+'><span class="grow">'+esc(x.name)+'</span><span class="chip '+(fx.indexOf(x.id)>=0?'':'cork')+'">'+(fx.indexOf(x.id)>=0?'Cố định':'Vãng lai')+'</span></label>'}).join('');
 }
 var SHEETS={
  theme:function(){
   var cur=themePref(),opts=[['light','Sáng'],['dark','Tối'],['auto','Theo máy']];
   return sheetWrap('Giao diện','<div class="seg" role="group" aria-label="Giao diện">'+opts.map(function(o){return '<button data-act="setTheme" data-v="'+o[0]+'" aria-pressed="'+(cur===o[0])+'">'+o[1]+'</button>'}).join('')+'</div>'+
-   '<p class="hint" style="margin:0">"Theo máy" sẽ tự sáng hay tối giống cài đặt của điện thoại. Lựa chọn chỉ lưu trên máy này.</p>');
+   '');
  },
  qrView:function(){
   var st=S.settings;if(!qrOk(st.qr))return sheetWrap('Mã QR','');
   return sheetWrap('Mã QR chuyển khoản','<div class="qr-full"><img src="'+st.qr+'" alt="Mã QR chuyển khoản"></div>'+
    (st.bankAccount?'<div class="small muted" style="text-align:center">'+esc(st.bankName)+' · '+esc(st.bankAccount)+(st.bankOwner?' · '+esc(st.bankOwner):'')+'</div>':'')+
-   (V.dl?'<button class="btn block" data-act="dlQr">Tải mã QR về máy</button>':'<p class="hint" style="margin:0;text-align:center">Nhấn giữ ảnh để lưu về máy.</p>'));
+   (V.dl?'<button class="btn block" data-act="dlQr">Tải mã QR về máy</button>':''));
  },
  sess:function(date){
   var s=getSession(date),st=S.settings,b='';
@@ -706,7 +711,7 @@ var SHEETS={
   var b='<div class="card" style="display:flex;flex-direction:column;gap:12px"><div class="field"><label for="f-date">Ngày chơi</label><input id="f-date" type="date" value="'+today()+'"></div>'+
    '<div class="two"><div class="field"><label for="f-start">Bắt đầu</label><input id="f-start" type="time" value="'+esc(S.settings.start)+'"></div><div class="field"><label for="f-end">Kết thúc</label><input id="f-end" type="time" value="'+esc(S.settings.end)+'"></div></div>'+
    '<div class="field"><label for="f-note">Ghi chú</label><input id="f-note" placeholder="vd: dời từ thứ Năm sang"></div>'+
-   '<p class="hint" style="margin:0">Muốn dời một buổi: mở buổi đó và bấm “Dời sang ngày khác”.</p></div><button class="btn block" data-act="saveAddSess">Thêm buổi</button>';
+   '</div><button class="btn block" data-act="saveAddSess">Thêm buổi</button>';
   return sheetWrap('Thêm buổi chơi',b);
  },
  pick:function(arg){
@@ -714,7 +719,7 @@ var SHEETS={
   var ids=field==='attended'?(s.checked?s.attended:s.expected):s.expected;
   if(!V.pendNew)V.pendNew=[];
   ids=ids.concat(V.pendNew.map(function(x){return x.id}).filter(function(id){return ids.indexOf(id)<0&&V.pendChecked&&V.pendChecked.indexOf(id)>=0}));
-  var b='<p class="muted" style="margin:0">'+esc(dLabel(date))+' · '+(field==='attended'?'Tích những người thực tế có mặt. Tiền vãng lai sẽ được tính theo danh sách này.':'Tích những người đã báo đi trên Zalo.')+'</p>'+
+  var b='<p class="muted" style="margin:0">'+esc(dLabel(date))+' · '+(field==='attended'?'Có mặt':'Dự kiến')+'</p>'+
    '<div class="addrow"><input id="f-q" placeholder="Tìm tên…" aria-label="Tìm tên" data-act="filter"></div>'+
    '<div class="checks" id="checks">'+memberChecks('pk',ids)+'</div>'+
    '<div class="card" style="display:flex;flex-direction:column;gap:8px"><span class="flabel">Người mới (vãng lai)</span><div class="addrow"><input id="f-new" placeholder="Tên người mới"><button class="btn sm" data-act="quickAdd">'+I.plus+'Thêm</button></div></div>'+
@@ -731,7 +736,7 @@ var SHEETS={
     '<div class="muted">'+mLabel(curMonth())+': '+(r?r.sessions+' buổi · phải đóng '+money(r.due)+' · đã đóng '+money(r.paid):'chưa có hoạt động')+'</div></div>'+(tdx&&tdx.owe>0?payBox(x.name,tdx.owe,tdx.months[0]&&tdx.months[0].m):''));
   }
   var b='<div class="card" style="display:flex;flex-direction:column;gap:12px"><div class="field"><label for="f-name">Tên</label><input id="f-name" value="'+esc(x?x.name:'')+'" placeholder="vd: Anh Tuấn"></div>'+
-   '<div class="field"><span class="flabel">Loại</span><div class="seg" id="f-type"><button data-act="seg" data-v="fixed" aria-pressed="'+(!x||x.type==='fixed')+'">Cố định</button><button data-act="seg" data-v="walkin" aria-pressed="'+(x&&x.type!=='fixed')+'">Vãng lai</button></div><span class="hint">Người cố định đóng quỹ theo tháng. Vãng lai đóng theo buổi.</span></div>'+
+   '<div class="field"><span class="flabel">Loại</span><div class="seg" id="f-type"><button data-act="seg" data-v="fixed" aria-pressed="'+(!x||x.type==='fixed')+'">Cố định</button><button data-act="seg" data-v="walkin" aria-pressed="'+(x&&x.type!=='fixed')+'">Vãng lai</button></div></div>'+
    (x?'<label class="check"><input type="checkbox" id="f-active"'+(x.active!==false?' checked':'')+'><span class="grow">Còn chơi trong team</span></label>':'')+'</div>'+
    '<button class="btn block" data-act="saveMember" data-v="'+(id||'')+'">Lưu</button>'+
    (x?'<div id="del-zone"><button class="btn danger block" data-act="askDel" data-v="member:'+id+'">Xoá người này</button></div>':'');
@@ -740,7 +745,7 @@ var SHEETS={
  fixedMonth:function(){
   var m=curMonth(),fx=fixedFor(m);
   var list=S.members.filter(function(x){return x.active!==false}).sort(byName);
-  var b='<p class="muted" style="margin:0">'+mLabel(m)+': tích những người đóng quỹ cố định tháng này.</p>'+
+  var b='<p class="muted" style="margin:0">'+'Cố định '+mLabel(m)+'</p>'+
    '<div class="field"><label for="f-mfee">Tiền quỹ tháng này cho mỗi người (đ)</label><input id="f-mfee" inputmode="numeric" value="'+feeFor(m)+'"></div>'+
    '<div class="checks">'+(list.length?list.map(function(x){return '<label class="check"><input type="checkbox" name="fx" value="'+x.id+'"'+(fx.indexOf(x.id)>=0?' checked':'')+'><span class="grow">'+esc(x.name)+'</span></label>'}).join(''):'<div class="empty">Chưa có thành viên.</div>')+'</div>'+
    '<button class="btn block" data-act="saveFixed">Lưu</button>';
@@ -753,7 +758,7 @@ var SHEETS={
   var pm=(arg&&arg.month)||curMonth();
   if(p){mid=p.memberId||'';amt=p.amount}
   if(!V.canEdit&&p)return sheetWrap('Khoản thu','<div class="card"><div class="t">'+esc(p.memberId?mname(p.memberId):'Thu khác')+'</div><div class="money pos" style="font-size:22px">+'+money(p.amount)+'</div><div class="muted">'+esc(dLabel(p.date))+' · cho '+mLabel(p.month).toLowerCase()+'</div>'+(p.playDate?'<div>Buổi chơi '+esc(dLabel(p.playDate))+'</div>':'')+(p.note?'<div>'+esc(p.note)+'</div>':'')+'</div>');
-  var playF='<div class="field" id="play-wrap"'+(p?'':' hidden')+'><label for="f-play">Ngày chơi (vãng lai, không bắt buộc)</label><input id="f-play" type="date" value="'+esc(p&&p.playDate||'')+'"><span class="hint">Chọn ngày thì app tự điền tháng và tiền buổi đó.</span></div>';
+  var playF='<div class="field" id="play-wrap"'+(p?'':' hidden')+'><label for="f-play">Ngày chơi (vãng lai, không bắt buộc)</label><input id="f-play" type="date" value="'+esc(p&&p.playDate||'')+'"></div>';
   var tail='<div class="field"><label for="f-amt">'+(p?'Số tiền (đ)':'Số tiền mỗi người (đ)')+'</label><input id="f-amt" inputmode="numeric" value="'+esc(amt)+'" placeholder="vd: 300.000"></div>'+playF+
    '<div class="two"><div class="field"><label for="f-pm">Đóng cho tháng</label>'+monthSel('f-pm',p?p.month:pm,(dataStart()<fStart()?dataStart():fStart()),mAdd(mk(today())>fStart()?mk(today()):fStart(),12))+'</div><div class="field"><label for="f-pd">Ngày đóng</label><input id="f-pd" type="date" value="'+esc(p?p.date:today())+'"></div></div>'+
    '<div class="field"><label for="f-pn">Ghi chú</label><input id="f-pn" value="'+esc(p?p.note||'':'')+'" placeholder="vd: chuyển khoản"></div></div>';
@@ -778,25 +783,30 @@ var SHEETS={
   arg=arg||{};var m=arg.month||curMonth();if(m<fStart())m=fStart();
   var x=arg.member?mem(arg.member):null,c=null;
   if(x)(S.charges||[]).forEach(function(y){if(!c&&y.memberId===x.id&&y.month===m)c=y});
-  var isF=x?fixedFor(m).indexOf(x.id)>=0||(fixedFor(m).indexOf(x.id)<0&&x.type==='fixed'&&!c&&false):true;
-  if(x)isF=fixedFor(m).indexOf(x.id)>=0;
+  var fx=fixedFor(m),isF=x?fx.indexOf(x.id)>=0:true;
+  var seg='<div class="field"><span class="flabel">Loại</span><div class="seg" id="f-ctype"><button data-act="seg" data-v="fixed" aria-pressed="'+isF+'">Cố định</button><button data-act="seg" data-v="walkin" aria-pressed="'+(!isF)+'">Vãng lai</button></div></div>';
+  var money2='<div class="two"><div class="field"><label for="f-camt">'+(c||arg.tick?'Số tiền (đ)':'Số tiền mỗi người (đ)')+'</label><input id="f-camt" inputmode="numeric" value="'+(c?c.amount:'')+'" placeholder="414.000"></div>'+
+   '<div class="field"><label for="f-cm">Tháng</label>'+monthSel('f-cm',m,fStart(),mAdd(mk(today())>fStart()?mk(today()):fStart(),12))+'</div></div>';
+  if(c&&!arg.tick){
+   return sheetWrap('Sửa khoản thu','<div class="card" style="display:flex;flex-direction:column;gap:12px"><div class="t" style="font-size:18px">'+esc(x.name)+'</div>'+seg+money2+'</div>'+
+    '<button class="btn block" data-act="saveCharge" data-v="'+c.id+'">Lưu</button><div id="del-zone"><button class="btn danger block" data-act="askDel" data-v="charge:'+c.id+'">Xoá</button></div>');
+  }
+  var list=S.members.filter(function(y){return y.active!==false||(x&&y.id===x.id)}).sort(function(a,b){return (fx.indexOf(b.id)>=0)-(fx.indexOf(a.id)>=0)||byName(a,b)});
+  var chips=list.map(function(y){var on=x&&y.id===x.id;return '<button class="chip pick" data-act="togName" data-v="'+y.id+'" aria-pressed="'+!!on+'">'+esc(y.name)+'</button>'}).join('');
+  var n=x?1:0;
   var b='<div class="card" style="display:flex;flex-direction:column;gap:12px">'+
-   '<div class="field"><label for="f-cname">Tên người đóng</label><input id="f-cname" name="hc-payer" autocomplete="off" autocorrect="off" spellcheck="false" value="'+esc(x?x.name:'')+'" placeholder="vd: Anh Tuấn"><div class="sugs" id="f-csug">'+(x?'':nameSugs(''))+'</div><span class="hint">Chạm tên có sẵn ở trên, hoặc gõ tên mới (sẽ tự thêm vào tab Thành viên).</span></div>'+
-   '<div class="field"><span class="flabel">Loại</span><div class="seg" id="f-ctype"><button data-act="seg" data-v="fixed" aria-pressed="'+isF+'">Cố định</button><button data-act="seg" data-v="walkin" aria-pressed="'+(!isF)+'">Vãng lai</button></div></div>'+
-   '<div class="two"><div class="field"><label for="f-camt">Số tiền phải đóng (đ)</label><input id="f-camt" inputmode="numeric" value="'+(c?c.amount:'')+'" placeholder="vd: 414.000"></div>'+
-   '<div class="field"><label for="f-cm">Tháng</label>'+monthSel('f-cm',m,fStart(),mAdd(mk(today())>fStart()?mk(today()):fStart(),12))+'</div></div></div>'+
-   '<p class="hint" style="margin:0">Lưu xong, người này hiện trong danh sách “Đóng tiền”. Khi họ chuyển khoản, chỉ cần tick.</p>'+
-   (arg.tick?'<button class="btn block" data-act="saveCharge" data-v="'+(c?c.id:'')+'" data-a="tick">Lưu và đánh dấu đã đóng</button><button class="btn ghost block" data-act="saveCharge" data-v="'+(c?c.id:'')+'">Chỉ lưu số tiền</button>':
-   '<button class="btn block" data-act="saveCharge" data-v="'+(c?c.id:'')+'">Lưu</button>'+
-   (c?'<div id="del-zone"><button class="btn danger block" data-act="askDel" data-v="charge:'+c.id+'">Xoá khoản phải thu này</button></div>':
-    '<button class="btn ghost block" data-act="saveCharge" data-a="more">Lưu và thêm người khác</button><button class="btn cork block" data-act="pay">Ghi thu khác (tài trợ, dư quỹ…)</button>'));
-  return sheetWrap(c?'Sửa khoản thu':'Ghi khoản thu',b);
+   '<div class="field"><div class="sec-h"><span class="flabel">Người đóng</span><button class="linkbtn" data-act="togAllFixed">Chọn hết cố định</button></div><div class="sugs" id="f-cpick">'+chips+'</div>'+
+   '<div class="addrow"><input id="f-cnew" name="hc-newname" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="Tên người mới"><button class="btn sm ghost" data-act="addName">'+I.plus+'Thêm</button></div></div>'+
+   seg+money2+'</div>'+
+   (arg.tick?'<button class="btn block" data-act="saveCharge" data-a="tick">Lưu và đánh dấu đã đóng</button><button class="btn ghost block" data-act="saveCharge">Chỉ lưu số tiền</button>':
+   '<button class="btn block" data-act="saveCharge"><span>Lưu (<span id="cp-count">'+n+'</span> người)</span></button><button class="btn cork block" data-act="pay">Ghi thu khác (tài trợ, dư quỹ…)</button>');
+  return sheetWrap('Ghi khoản thu',b);
  },
  exp:function(id){
   var e=null;if(id)S.expenses.forEach(function(y){if(y.id===id)e=y});
   if(!V.canEdit&&e)return sheetWrap('Khoản chi','<div class="card"><div class="t">'+esc(e.category)+'</div><div class="money neg" style="font-size:22px">−'+money(e.amount)+'</div><div class="muted">'+esc(dLabel(e.date))+'</div>'+(e.note?'<div>'+esc(e.note)+'</div>':'')+'</div>');
   var cats=S.settings.categories.slice();if(e&&cats.indexOf(e.category)<0)cats.push(e.category);
-  var b='<div class="card" style="display:flex;flex-direction:column;gap:12px"><div class="field"><label for="f-cat">Loại chi</label><select id="f-cat">'+cats.map(function(c){return '<option'+(e&&e.category===c?' selected':'')+'>'+esc(c)+'</option>'}).join('')+'</select><span class="hint">Sửa danh sách loại chi trong Cài đặt.</span></div>'+
+  var b='<div class="card" style="display:flex;flex-direction:column;gap:12px"><div class="field"><label for="f-cat">Loại chi</label><select id="f-cat">'+cats.map(function(c){return '<option'+(e&&e.category===c?' selected':'')+'>'+esc(c)+'</option>'}).join('')+'</select></div>'+
    '<div class="field"><label for="f-amt">Số tiền (đ)</label><input id="f-amt" inputmode="numeric" value="'+(e?e.amount:'')+'" placeholder="vd: 500.000"></div>'+
    '<div class="field"><label for="f-ed">Ngày chi</label><input id="f-ed" type="date" value="'+esc(e?e.date:today())+'"></div>'+
    '<div class="field"><label for="f-en">Ghi chú</label><input id="f-en" value="'+esc(e?e.note||'':'')+'" placeholder="vd: 2 ống cầu"></div></div>'+
@@ -808,11 +818,11 @@ var SHEETS={
   var st=S.settings;V.tmpCourts=st.courts.slice();
   var b='<div class="card" style="display:flex;flex-direction:column;gap:12px"><h3>Team</h3><div class="field"><label for="s-name">Tên team</label><input id="s-name" value="'+esc(st.teamName)+'"></div>'+
    '<div class="field"><label for="s-venue">Tên sân / địa chỉ</label><input id="s-venue" value="'+esc(st.venueName)+'" placeholder="vd: Nhà thi đấu Quận 3"></div>'+
-   '<div class="field"><label for="s-map">Link bản đồ chỉ đường</label><input id="s-map" inputmode="url" value="'+esc(st.mapUrl)+'"><span class="hint">Dán link Google Maps (bắt đầu bằng https://)</span></div></div>'+
+   '<div class="field"><label for="s-map">Link bản đồ chỉ đường</label><input id="s-map" inputmode="url" value="'+esc(st.mapUrl)+'"></div></div>'+
    '<div class="card" style="display:flex;flex-direction:column;gap:12px"><h3>Lịch cố định</h3><div class="field"><label for="s-day">Ngày trong tuần</label><select id="s-day">'+DAYS.map(function(d,i){return '<option value="'+i+'"'+(+st.day===i?' selected':'')+'>'+d+'</option>'}).join('')+'</select></div>'+
    '<div class="two"><div class="field"><label for="f-start">Bắt đầu</label><input id="f-start" type="time" value="'+esc(st.start)+'"></div><div class="field"><label for="f-end">Kết thúc</label><input id="f-end" type="time" value="'+esc(st.end)+'"></div></div>'+
    '<div class="field"><span class="flabel">Sân mặc định</span><div class="courts" id="courts">'+courtChips(st.courts)+'</div><div class="addrow"><input id="f-court" inputmode="numeric" placeholder="Số sân" aria-label="Số sân"><button class="btn sm" data-act="addCourt">'+I.plus+'Thêm sân</button></div></div></div>'+
-   '<div class="card" style="display:flex;flex-direction:column;gap:12px"><h3>Tiền</h3><div class="field"><label for="s-mfee">Quỹ tháng cho người cố định (đ)</label><input id="s-mfee" inputmode="numeric" value="'+st.monthlyFee+'"><span class="hint">Áp dụng cho các tháng chưa đặt riêng.</span></div>'+
+   '<div class="card" style="display:flex;flex-direction:column;gap:12px"><h3>Tiền</h3><div class="field"><label for="s-mfee">Quỹ tháng cho người cố định (đ)</label><input id="s-mfee" inputmode="numeric" value="'+st.monthlyFee+'"></div>'+
    '<div class="field"><label for="s-wfee">Phí mỗi buổi cho vãng lai (đ)</label><input id="s-wfee" inputmode="numeric" value="'+st.walkinFee+'"></div>'+
    '<div class="field"><label for="s-fstart">Quỹ bắt đầu từ tháng</label>'+monthSel('s-fstart',fStart(),mAdd(mk(today()),-12),mAdd(mk(today()),12))+'</div>'+
    '<div class="field"><label for="s-cats">Các loại chi (mỗi dòng một loại)</label><textarea id="s-cats">'+esc(st.categories.join('\n'))+'</textarea></div></div>'+
@@ -820,11 +830,11 @@ var SHEETS={
    '<div class="field"><label for="s-acc">Số tài khoản</label><input id="s-acc" inputmode="numeric" value="'+esc(st.bankAccount)+'"></div>'+
    '<div class="field"><label for="s-owner">Tên chủ tài khoản</label><input id="s-owner" value="'+esc(st.bankOwner)+'" placeholder="vd: NGUYEN VAN TRUNG"></div>'+
    '<div class="field"><label for="s-payday">Hạn đóng quỹ: trước ngày (1–31, để trống nếu không có)</label><input id="s-payday" inputmode="numeric" value="'+esc(st.payDay||'')+'"></div>'+
-   '<div class="field"><span class="flabel">Mã QR chuyển khoản</span><div class="qr-edit" id="qr-edit">'+qrEditInner()+'</div><span class="hint">Chụp màn hình mã QR trong app ngân hàng. Nên cắt ảnh trong mục Ảnh của điện thoại cho chỉ còn phần mã QR, rồi chọn ảnh đó.</span></div>'+
-   '<span class="hint">Thành viên sẽ thấy mục “Cách đóng tiền” ở tab Quỹ, có nút chép số tài khoản và tải mã QR.</span></div>'+
-   '<div class="card" style="display:flex;flex-direction:column;gap:12px"><h3>Nhóm Zalo</h3><div class="field"><label for="s-zalo">Link nhóm Zalo</label><input id="s-zalo" inputmode="url" value="'+esc(st.zaloUrl)+'" placeholder="https://zalo.me/g/..."><span class="hint">Trong Zalo: vào nhóm, bấm ⋯, chọn “Link nhóm”, chép link dán vào đây.</span></div></div>'+
+   '<div class="field"><span class="flabel">Mã QR chuyển khoản</span><div class="qr-edit" id="qr-edit">'+qrEditInner()+'</div></div>'+
+   '</div>'+
+   '<div class="card" style="display:flex;flex-direction:column;gap:12px"><h3>Nhóm Zalo</h3><div class="field"><label for="s-zalo">Link nhóm Zalo</label><input id="s-zalo" inputmode="url" value="'+esc(st.zaloUrl)+'" placeholder="https://zalo.me/g/..."></div></div>'+
    '<button class="btn block" data-act="saveSettings">Lưu cài đặt</button>'+
-   '<div class="card" style="display:flex;flex-direction:column;gap:10px"><h3>Làm lại quỹ</h3><span class="hint">Xoá hết '+S.payments.length+' khoản thu, '+S.expenses.length+' khoản chi và danh sách phải thu, quỹ về 0đ. Thành viên, lịch chơi, cài đặt và mã QR giữ nguyên.</span>'+
+   '<div class="card" style="display:flex;flex-direction:column;gap:10px"><h3>Làm lại quỹ</h3>'+
    '<div id="del-zone"><button class="btn danger block" data-act="askDel" data-v="money:all"'+(S.payments.length||S.expenses.length||(S.charges||[]).length?'':' disabled')+'>Xoá hết khoản thu và chi</button></div></div>';
   return sheetWrap('Cài đặt',b);
  },
@@ -937,25 +947,34 @@ var ACT={
  charge:function(v){openSheet('charge',{month:v||curMonth()})},
  pickName:function(v){var x=mem(v);if(!x)return;var i=document.getElementById('f-cname');if(i)i.value=x.name;var sg=document.getElementById('f-csug');if(sg)sg.innerHTML='';chargeFill(x);var a=document.getElementById('f-camt');if(a&&!a.value)a.focus()},
  chargeFor:function(v,a){openSheet('charge',{member:v,month:a})},
- saveCharge:function(id,more){
-  var name=val('f-cname').trim().replace(/\s+/g,' ');if(!name){toast('Nhập tên người đóng');return}
-  var amt=toInt(val('f-camt'));if(!amt){toast('Nhập số tiền');return}
-  var m=val('f-cm')||curMonth();if(m<fStart()){toast('Quỹ bắt đầu từ '+mLabel(fStart()).toLowerCase());return}
+ togName:function(v,a,el){el.setAttribute('aria-pressed',String(el.getAttribute('aria-pressed')!=='true'));cpUpd()},
+ togAllFixed:function(){var fx=fixedFor(val('f-cm')||curMonth()),bs=[].slice.call(document.querySelectorAll('#f-cpick .pick')).filter(function(b){return fx.indexOf(b.getAttribute('data-v'))>=0}),all=bs.length&&bs.every(function(b){return b.getAttribute('aria-pressed')==='true'});bs.forEach(function(b){b.setAttribute('aria-pressed',String(!all))});var sb=document.querySelector('#f-ctype [data-v="fixed"]');if(sb&&!all)ACT.seg(null,null,sb);cpUpd()},
+ addName:function(){var i=document.getElementById('f-cnew');if(!i)return;var nm=i.value.trim().replace(/\s+/g,' ');if(!nm)return;var k=nkey(nm),ex=null;
+  [].forEach.call(document.querySelectorAll('#f-cpick .pick'),function(b){if(!ex&&nkey(b.textContent)===k)ex=b});
+  if(!ex){ex=document.createElement('button');ex.className='chip pick';ex.setAttribute('data-act','togName');ex.setAttribute('data-new',nm);ex.textContent=nm;document.getElementById('f-cpick').appendChild(ex)}
+  ex.setAttribute('aria-pressed','true');i.value='';cpUpd()},
+ saveCharge:function(id,mode){
+  var amt=toInt(val('f-camt'));
+  var m=val('f-cm')||curMonth();if(m<fStart())m=fStart();
   var tb=document.querySelector('#f-ctype [aria-pressed="true"]'),type=tb?tb.getAttribute('data-v'):'fixed';
-  var low=name.toLowerCase(),x=null;S.members.forEach(function(y){if(!x&&y.name.trim().toLowerCase()===low)x=y});
-  if(!x){x={id:uid(),name:name,type:type,active:true};S.members.push(x)}
-  x.active=true;x.type=type;
+  var targets=[];
+  if(id){var c0=null;(S.charges||[]).forEach(function(y){if(y.id===id)c0=y});if(!c0)return;targets=[mem(c0.memberId)].filter(Boolean)}
+  else{var pend=document.getElementById('f-cnew');if(pend&&pend.value.trim())ACT.addName();
+   [].forEach.call(document.querySelectorAll('#f-cpick .pick[aria-pressed="true"]'),function(b){var nid=b.getAttribute('data-v'),nn=b.getAttribute('data-new');
+    if(nid){var y=mem(nid);if(y)targets.push(y)}else if(nn){var k=nkey(nn),y2=null;S.members.forEach(function(z){if(!y2&&nkey(z.name)===k)y2=z});if(!y2){y2={id:uid(),name:nn,type:type,active:true};S.members.push(y2)}targets.push(y2)}})}
+  if(!targets.length){toast('Chọn người đóng');return}
+  if(!amt){toast('Nhập số tiền');var a=document.getElementById('f-camt');if(a)a.focus();return}
   if(!S.months[m])S.months[m]={fixed:fixedFor(m).slice()};
-  var fx=S.months[m].fixed||(S.months[m].fixed=[]),k=fx.indexOf(x.id);
-  if(type==='fixed'&&k<0)fx.push(x.id);if(type!=='fixed'&&k>=0)fx.splice(k,1);
-  if(!S.charges)S.charges=[];
-  var c=null;S.charges.forEach(function(y){if(id?y.id===id:(y.memberId===x.id&&y.month===m))c=y});
-  if(!c){c={id:uid()};S.charges.push(c)}
-  c.memberId=x.id;c.amount=amt;c.month=m;
-  S.charges=S.charges.filter(function(y){return y===c||!(y.memberId===c.memberId&&y.month===c.month)});
-  if(more==='more')V.reopen=['charge',{month:m}];
-  if(more==='tick'){var rr=dues(m).filter(function(y){return y.id===x.id})[0],ow=rr?rr.due-rr.paid:0;if(ow>0)S.payments.push({id:uid(),memberId:x.id,amount:ow,month:m,date:today(),note:''});commit('Đã ghi '+x.name+' đóng '+money(amt));return}
-  commit('Đã ghi '+x.name+' phải đóng '+money(amt));
+  var fx=S.months[m].fixed||(S.months[m].fixed=[]);if(!S.charges)S.charges=[];
+  targets.forEach(function(x){
+   x.active=true;x.type=type;var k=fx.indexOf(x.id);if(type==='fixed'&&k<0)fx.push(x.id);if(type!=='fixed'&&k>=0)fx.splice(k,1);
+   var c=null;S.charges.forEach(function(y){if(id?y.id===id:(y.memberId===x.id&&y.month===m))c=y});
+   if(!c){c={id:uid()};S.charges.push(c)}
+   c.memberId=x.id;c.amount=amt;c.month=m;
+   S.charges=S.charges.filter(function(y){return y===c||!(y.memberId===c.memberId&&y.month===c.month)});
+  });
+  if(mode==='tick'){targets.forEach(function(x){var rr=dues(m).filter(function(y){return y.id===x.id})[0],ow=rr?rr.due-rr.paid:0;if(ow>0)S.payments.push({id:uid(),memberId:x.id,amount:ow,month:m,date:today(),note:''})});commit('Đã ghi '+targets[0].name+' đóng '+money(amt));return}
+  commit(targets.length>1?'Đã ghi '+targets.length+' người, mỗi người '+money(amt):'Đã ghi '+targets[0].name+' phải đóng '+money(amt));
  },
  untickNo:function(){V.untick=null;render()},
  untickYes:function(){var u=V.untick;if(!u)return;V.untick=null;var x=mem(u.id);S.payments=S.payments.filter(function(p){return !(p.memberId===u.id&&p.month===u.m)});commit('Đã bỏ đánh dấu '+(x?x.name:''))},
@@ -1007,7 +1026,7 @@ var ACT={
   setSess(date,{status:'normal',movedTo:null});commit('Đã khôi phục buổi');
  },
  askCancel:function(date){document.getElementById('sess-zone').innerHTML='<div class="inline-form"><div class="field"><label for="f-why">Lý do nghỉ (mọi người sẽ thấy)</label><input id="f-why" placeholder="vd: sân bảo trì"></div><div class="btnrow"><button class="btn ghost" data-act="sess" data-v="'+date+'">Thôi</button><button class="btn danger" data-act="cancelSess" data-v="'+date+'" data-a="1">Huỷ buổi</button></div></div>'},
- askMove:function(date){document.getElementById('sess-zone').innerHTML='<div class="inline-form"><div class="field"><label for="f-mv">Dời sang ngày</label><input id="f-mv" type="date" value="'+date+'"></div><p class="hint" style="margin:0">Giờ, sân và danh sách dự kiến được chuyển sang ngày mới. Buổi cũ hiện là “nghỉ”.</p><div class="btnrow"><button class="btn ghost" data-act="sess" data-v="'+date+'">Thôi</button><button class="btn" data-act="doMove" data-v="'+date+'">Dời buổi</button></div></div>'},
+ askMove:function(date){document.getElementById('sess-zone').innerHTML='<div class="inline-form"><div class="field"><label for="f-mv">Dời sang ngày</label><input id="f-mv" type="date" value="'+date+'"></div><div class="btnrow"><button class="btn ghost" data-act="sess" data-v="'+date+'">Thôi</button><button class="btn" data-act="doMove" data-v="'+date+'">Dời buổi</button></div></div>'},
  doMove:function(date){
   var nd=val('f-mv');if(!nd||nd===date){toast('Chọn ngày mới khác ngày cũ');return}
   var s=getSession(date),o=S.sessions[nd]||{};
@@ -1137,12 +1156,11 @@ document.addEventListener('paste',function(ev){
   shrinkImage(f,function(d,orig){if(!d){toast('Không đọc được ảnh vừa dán');return}V.tmpQr=d;V.tmpQrOrig=orig;var el=document.getElementById('qr-edit');if(el)el.innerHTML=qrEditInner();toast('Đã nhận ảnh. Bấm “Lưu mã QR”.')});
 });
 document.addEventListener('input',function(ev){
-  if(ev.target.id==='f-cname'){var sg=document.getElementById('f-csug');if(sg)sg.innerHTML=nameSugs(ev.target.value);var nm=nkey(ev.target.value),x=null;S.members.forEach(function(y){if(!x&&nkey(y.name)===nm)x=y});if(x)chargeFill(x)}
   var t=ev.target;if(t&&MONEY_IDS.indexOf(t.id)>=0){var pos=t.selectionStart==null?t.value.length:t.selectionStart,nd=t.value.slice(0,pos).replace(/\D/g,'').length,nv=fmtNum(t.value);if(nv!==t.value){t.value=nv;var i=0,c=0;while(i<nv.length&&c<nd){if(/\d/.test(nv[i]))c++;i++}try{t.setSelectionRange(i,i)}catch(e){}}}
   if(ev.target.id==='f-q'){var q=ev.target.value.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'d');
    document.querySelectorAll('#checks .check').forEach(function(c){var t=c.textContent.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/đ/g,'d');c.hidden=q&&t.indexOf(q)<0})}
 });
-document.addEventListener('keydown',function(ev){if(ev.key==='Escape'&&V.menu){V.menu=false;render()}if(ev.key==='Escape'&&V.sheet)closeSheet();if(ev.key==='Enter'&&ev.target.id==='f-new'){ev.preventDefault();ACT.quickAdd()}if(ev.key==='Enter'&&ev.target.id==='f-court'){ev.preventDefault();ACT.addCourt()}});
+document.addEventListener('keydown',function(ev){if(ev.key==='Escape'&&V.menu){V.menu=false;render()}if(ev.key==='Escape'&&V.sheet)closeSheet();if(ev.key==='Enter'&&ev.target.id==='f-new'){ev.preventDefault();ACT.quickAdd()}if(ev.key==='Enter'&&ev.target.id==='f-cnew'){ev.preventDefault();ACT.addName()}if(ev.key==='Enter'&&ev.target.id==='f-court'){ev.preventDefault();ACT.addCourt()}});
 
 applyTheme();
 render();
