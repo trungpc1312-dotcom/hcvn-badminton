@@ -1,0 +1,1 @@
+{"hosting":{"public":".","ignore":["firebase.json",".github/**","**/.*","README.md"],"headers":[{"source":"index.html","headers":[{"key":"Cache-Control","value":"no-cache"}]}]}}
