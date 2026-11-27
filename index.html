@@ -808,8 +808,8 @@ function commit(msg){
   if(!V.canEdit)return;
   S.updatedAt=new Date().toISOString();
   if(!V.fb){closeSheet();render();toast((msg||'Đã lưu')+' (bản thử, chưa lưu lên mạng)');return}
-  var json=JSON.stringify(S);V.busy=true;showSaving(true);
-  V.fb.save(json).then(function(){V.lastJson=json;try{localStorage.setItem('cl-cache',json)}catch(e){}
+  var sp=splitS(),json=sp[0];V.busy=true;showSaving(true);
+  V.fb.save(json,sp[1]).then(function(){V.lastJson=json;V.priv=JSON.parse(sp[1]);try{localStorage.setItem('cl-cache',json)}catch(e){}
     V.busy=false;showSaving(false);closeSheet();render();toast(msg||'Đã lưu');
   }).catch(function(e){
     V.busy=false;showSaving(false);var c=e&&e.code||'';
@@ -825,7 +825,7 @@ var ACT={
  menu:function(){V.menu=!V.menu;render()},
  login:function(){if(!V.fb)return;V.fb.signIn().catch(function(e){var c=e&&e.code||'';if(/popup-closed|cancelled/.test(c))return;
    toast(/popup-blocked|operation-not-supported|web-storage/.test(c)?'Trình duyệt này không đăng nhập được. Hãy mở link bằng Chrome hoặc Safari.':'Chưa đăng nhập được, thử lại sau.')})},
- logout:function(){if(V.fb)V.fb.signOut();V.canEdit=false;V.user=null;closeSheet();render();toast('Đã đăng xuất')},
+ logout:function(){if(V.fb)V.fb.signOut();V.canEdit=false;V.user=null;V.priv=null;stripPriv();closeSheet();render();toast('Đã đăng xuất')},
  menuClose:function(){V.menu=false;render()},
  menuGo:function(v){V.menu=false;render();if(ACT[v])ACT[v]()},
  themeSheet:function(){openSheet('theme')},
@@ -1006,19 +1006,22 @@ if(location.protocol==='file:'){V.canEdit=true;render()}
 V.dl={save:function(o){return new Promise(function(res){var u=URL.createObjectURL(o.data),a=document.createElement('a');a.href=u;a.download=o.filename;document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(u)},4000);res()})}};
 if(qrOk(S.settings.qr))render();
 function onData(json,exists){
-  if(!exists){V.loading=false;if(V.canEdit)importSeed();else{V.needImport=true;try{S=JSON.parse(SEED)}catch(e){}normS();render()}return}
+  if(!exists){V.loading=false;if(V.canEdit)importSeed();else{V.needImport=true;try{S=JSON.parse(SEED)}catch(e){}normS();stripPriv();render()}return}
   if(json===V.lastJson&&!V.loading)return;
   V.lastJson=json;try{localStorage.setItem('cl-cache',json)}catch(e){}
-  try{S=JSON.parse(json)}catch(e){return}normS();V.loading=false;
+  try{S=JSON.parse(json)}catch(e){return}normS();if(V.canEdit)mergePriv();V.loading=false;
   if(V.busy)return;var keep=V.sheet&&V.canEdit;render();if(keep)return;
 }
+function splitS(){var pub=JSON.parse(JSON.stringify(S)),ph={};(pub.members||[]).forEach(function(m){if(m.phone)ph[m.id]=m.phone;delete m.phone});return [JSON.stringify(pub),JSON.stringify({phones:ph})]}
+function mergePriv(){var ph=V.priv&&V.priv.phones;if(!ph)return;(S.members||[]).forEach(function(m){if(ph[m.id])m.phone=ph[m.id]})}
+function stripPriv(){(S.members||[]).forEach(function(m){delete m.phone})}
 function importSeed(){try{S=JSON.parse(SEED)}catch(e){return}normS();V.needImport=false;commit('Đã chuyển dữ liệu sang app mới')}
 window.__appFB=function(fb){
   V.fb=fb;render();
   fb.onData(onData,function(){V.loading=false;render()});
   fb.onAuth(function(u){
-    V.user=u||null;if(!u){V.canEdit=false;render();return}
-    fb.isLeader().then(function(ok){V.canEdit=ok;render();
+    V.user=u||null;if(!u){V.canEdit=false;V.priv=null;stripPriv();render();return}
+    fb.isLeader().then(function(r){var ok=r.ok;V.canEdit=ok;if(ok){V.priv=r.priv||{phones:{}};mergePriv()}render();
       if(!ok){toast('Tài khoản này chỉ có quyền xem.');return}
       toast('Đã đăng nhập trưởng nhóm');if(V.needImport)importSeed();
     });
@@ -1027,6 +1030,21 @@ window.__appFB=function(fb){
 if(window.FB)window.__appFB(window.FB);
 setTimeout(function(){if(V.loading){V.loading=false;render()}},8000);
 })();
+</script>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getFirestore,doc,onSnapshot,getDoc,writeBatch} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {getAuth,GoogleAuthProvider,signInWithPopup,signOut,onAuthStateChanged} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+const app=initializeApp({"apiKey": "AIzaSyDrmjmyTCiLi6eDcmZcmhxAMwaVySlUus0", "authDomain": "hcvn-badminton.firebaseapp.com", "projectId": "hcvn-badminton", "storageBucket": "hcvn-badminton.firebasestorage.app", "messagingSenderId": "560864340747", "appId": "1:560864340747:web:ec6b9204bc3e5d4367900e"});const db=getFirestore(app);const auth=getAuth(app);const ref=doc(db,"app","data");
+window.FB={
+ onData(cb,err){onSnapshot(ref,s=>cb(s.exists()?s.data().json:null,s.exists()),e=>{console.warn(e);err&&err(e)})},
+ save(json,priv){const b=writeBatch(db),at=new Date().toISOString();b.set(ref,{json,at});b.set(doc(db,"meta","leader"),{json:priv,at});return b.commit()},
+ onAuth(cb){onAuthStateChanged(auth,cb)},
+ isLeader(){return getDoc(doc(db,"meta","leader")).then(s=>{let priv=null;try{priv=s.exists()?JSON.parse(s.data().json):null}catch(e){}return {ok:true,priv}},()=>({ok:false}))},
+ signIn(){return signInWithPopup(auth,new GoogleAuthProvider())},
+ signOut(){return signOut(auth)}
+};
+if(window.__appFB)window.__appFB(window.FB);
 </script>
 </body>
 </html>
